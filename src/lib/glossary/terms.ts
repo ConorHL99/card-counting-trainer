@@ -41,6 +41,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     definition:
       "A system whose tag values sum to zero across a full deck. Balanced counts require true-count conversion to be betting-relevant; unbalanced counts (e.g. KO) don't.",
   },
+  deviation: {
+    term: "Deviation (Index Play)",
+    definition:
+      "A play that departs from basic strategy because the true count has crossed a threshold — e.g. standing on 16 vs 10 once the count is high enough that the deck favors it.",
+  },
 };
 
 export type GlossaryKey = keyof typeof GLOSSARY;

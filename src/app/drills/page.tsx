@@ -30,7 +30,7 @@ const DRILLS: DrillEntry[] = [
     href: "/drills/deviations",
     title: "Deviation Index",
     description: "Illustrious 18 / Fab 4 calls (Hi-Lo only).",
-    available: false,
+    available: true,
   },
   {
     href: "/drills/bet-sizing",

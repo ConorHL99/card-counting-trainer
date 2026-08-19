@@ -424,6 +424,29 @@ a mechanic that has an existing, opposing default behavior (here:
 and ask which one should win before implementing, rather than building
 the setting as a modifier on top of the behavior it conflicts with.
 
+## [2026-08-20] Design call: Deviation Index Drill uses a curated subset, not the full canonical Illustrious 18/Fab 4
+**What happened:** SPEC.md §5.3 calls for an "Illustrious 18 / Fab 4"
+deviation drill. Built `src/lib/deviations/illustrious-18.ts` with 16
+index plays (1 insurance + 15 hit/stand/double/split/surrender
+deviations) that I could verify with high confidence from memory
+against widely-repeated published thresholds — and deliberately left
+out several commonly-cited low-count "hit instead of stand" plays
+(12 vs 4/5/6, 13 vs 2/3) whose exact thresholds I couldn't verify with
+confidence without a source to check against.
+**Reasoning:** Unlike the bet-ramp (any reasonable spread is fine for
+practice purposes), deviation index numbers are specific memorized
+facts real counters rely on — getting one wrong would actively teach
+something incorrect, which is worse than a smaller-but-correct set.
+Every included rule's "basic strategy" baseline is computed live via
+the existing `getBasicStrategyAction` engine (not re-typed by hand)
+and was cross-checked with a smoke test before committing, so the
+"off count" side of each rule is guaranteed consistent with the same
+chart simulated seats play by.
+**If this call is wrong:** the rule set is fully isolated in one file,
+one array (`DEVIATION_RULES`) — adding, correcting, or expanding to
+the complete canonical 22-entry list against a verified source touches
+only `src/lib/deviations/illustrious-18.ts` and nothing else.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
