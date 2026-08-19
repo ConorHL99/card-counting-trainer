@@ -70,6 +70,34 @@ assumption is wrong, the fix is additive (add a light palette under
 the same design-token names in `src/app/globals.css`) — nothing built
 on top of the tokens should need to change.
 
+## [2026-08-19] Design call: no full dealer-hand simulation in the Running Count Drill
+**What happened:** SPEC.md §5.3 lists "simulated seat count (shoe mode
+only)" as configurable for the Running Count Drill, and §4.1 says
+simulated seats consume cards from the shared shoe — but neither spells
+out whether a *drill* (as opposed to Play Mode) needs a full simulated
+dealer hand (hole card kept secret until seats finish, dealer hits to
+17, etc.) for seats to play correctly-informed basic strategy against.
+Built a "reference card" instead: one card is drawn and shown to
+represent what the seats play against, seats play out their hands
+against it via the existing `playSimulatedSeatHand`, and no dealer
+hole-card / hit-to-17 logic exists yet.
+**Why it's a problem (assumption, not a caught mistake):** A real
+dealer hand's hole card and hit-to-17 draws are still real cards a
+counter would see and count — skipping them means shoe-mode drill
+rounds under-consume cards relative to a real table, which is a
+smaller-scope version of the exact "unrealistic card consumption"
+failure mode CLAUDE.md rule #2 exists to prevent.
+**Reasoning:** A running-count drill's job (per its own description,
+"cards shown, track the count") is to test counting, not to model a
+full playable blackjack round — that's explicitly Play Mode's job
+(§5.4). Building real dealer AI (hole card secrecy, hit/stand-soft-17)
+belongs with Play Mode, where it's actually needed for win/loss
+resolution; building it now for a drill would be speculative scope
+growth. If this call is wrong, add a `playDealerHand` function to
+`src/lib/shoe` (mirroring `playSimulatedSeatHand`) and have the drill
+call it instead of drawing a bare reference card — Play Mode will need
+that function regardless.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
