@@ -10,10 +10,33 @@ export interface DrillSeat {
   skill: SeatSkill;
 }
 
+/** A dealt card with a stable per-instance id, separate from
+ * rank/suit — needed so the DealingTable (SPEC.md §7.2) can key each
+ * card for animation without misidentifying duplicate rank/suit cards
+ * from a multi-deck shoe, and without restarting an in-flight
+ * animation when unrelated state changes trigger a re-render. */
+export interface DealtCard {
+  id: string;
+  card: Card;
+}
+
+/** One table position's cards for the most recent round — the dealer
+ * (or the lone drawn card when there's no seat structure) plus one
+ * entry per active simulated seat. */
+export interface TableHand {
+  id: string;
+  label: string;
+  cards: DealtCard[];
+}
+
 const MAX_SEATS = 6;
 
 function createShoe(dealMode: DealMode, deckCount: number, penetration: number): Shoe {
   return new Shoe({ dealMode, deckCount, penetration });
+}
+
+function wrapCard(card: Card): DealtCard {
+  return { id: crypto.randomUUID(), card };
 }
 
 /**
@@ -33,7 +56,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
 
   const shoeRef = useRef<Shoe>(createShoe(dealMode, deckCount, penetration));
   const [dealtSinceShuffle, setDealtSinceShuffle] = useState<Card[]>([]);
-  const [lastRound, setLastRound] = useState<Card[]>([]);
+  const [lastRoundHands, setLastRoundHands] = useState<TableHand[]>([]);
   const [shuffleNotice, setShuffleNotice] = useState(false);
   // A freshly created shoe is always full — derive the initial stats
   // from config rather than reading shoeRef.current during render.
@@ -55,7 +78,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
     shoeRef.current = shoe;
     setShoeStats({ remaining: shoe.remaining, size: shoe.size });
     setDealtSinceShuffle([]);
-    setLastRound([]);
+    setLastRoundHands([]);
     setShuffleNotice(false);
     setFeedback(null);
     setGuess("");
@@ -76,7 +99,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
       // Rule #4: switching systems invalidates the running count — the
       // cards already dealt were tagged under the old system's values.
       setDealtSinceShuffle([]);
-      setLastRound([]);
+      setLastRoundHands([]);
       setFeedback(null);
       setGuess("");
     }
@@ -126,23 +149,32 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
     const reshuffled = dealMode === "shoe" && shoe.needsShuffle;
     if (reshuffled) shoe.shuffle();
 
-    let roundCards: Card[];
+    let hands: TableHand[];
     if (dealMode === "single-card" || seats.length === 0) {
-      roundCards = [shoe.draw()];
+      hands = [{ id: "draw", label: "", cards: [wrapCard(shoe.draw())] }];
     } else {
       const referenceCard = shoe.draw();
-      const seatCards = seats.flatMap((seat) => {
+      const seatHands: TableHand[] = seats.map((seat, i) => {
         const initial: [Card, Card] = [shoe.draw(), shoe.draw()];
         const results = playSimulatedSeatHand(shoe, seat.skill, initial, referenceCard);
-        return results.flatMap((hand) => hand.cards);
+        return {
+          id: seat.id,
+          label: `Seat ${i + 1}`,
+          cards: results.flatMap((hand) => hand.cards).map(wrapCard),
+        };
       });
-      roundCards = [referenceCard, ...seatCards];
+      hands = [{ id: "dealer", label: "Dealer", cards: [wrapCard(referenceCard)] }, ...seatHands];
     }
+
+    // Single source of truth: derive the flat card list (for count
+    // math) from the same `hands` structure the table renders, so the
+    // two can never drift out of sync.
+    const roundCards = hands.flatMap((hand) => hand.cards.map((dealt) => dealt.card));
 
     setShoeStats({ remaining: shoe.remaining, size: shoe.size });
     setShuffleNotice(reshuffled);
     setDealtSinceShuffle((prev) => (reshuffled ? roundCards : [...prev, ...roundCards]));
-    setLastRound(roundCards);
+    setLastRoundHands(hands);
     setFeedback(null);
     setGuess("");
   }
@@ -164,7 +196,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
     penetration,
     seats,
     dealtSinceShuffle,
-    lastRound,
+    lastRoundHands,
     shuffleNotice,
     shoeStats,
     runningCount,

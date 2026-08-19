@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCardStreamDrill } from "@/hooks/useCardStreamDrill";
 import { DrillConfigPanel } from "@/components/DrillConfigPanel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DealingTable } from "@/components/DealingTable";
 import { PlayingCardView } from "@/components/PlayingCard";
 import { Term } from "@/components/Term";
 
@@ -50,11 +51,21 @@ export default function RunningCountDrillPage() {
           </p>
         )}
 
-        <div className="flex min-h-24 flex-wrap items-center gap-2">
-          {drill.lastRound.length === 0 ? (
+        <div className="flex min-h-24 items-center justify-center">
+          {drill.lastRoundHands.length === 0 ? (
             <p className="text-sm text-ink-muted">Click Deal to begin.</p>
+          ) : drill.seats.length > 0 ? (
+            // Real hand structure (dealer + seats) — use the shared
+            // table (SPEC.md §7.2 / CLAUDE.md rule #11).
+            <DealingTable hands={drill.lastRoundHands} />
           ) : (
-            drill.lastRound.map((card, i) => <PlayingCardView key={i} card={card} />)
+            // No seats: just one drawn card, no hand/table structure
+            // to lay out — keep the simple single-card view.
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {drill.lastRoundHands[0].cards.map((dealt) => (
+                <PlayingCardView key={dealt.id} card={dealt.card} />
+              ))}
+            </div>
           )}
         </div>
 
