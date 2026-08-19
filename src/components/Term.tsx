@@ -57,7 +57,13 @@ export function Term({ id, children }: TermProps) {
         <span
           id={popoverId}
           role="tooltip"
-          className="felt-panel absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 bg-felt-900 p-3 text-left text-sm shadow-lg"
+          // Deliberately not `.felt-panel` here: that shared class's
+          // translucent background is un-layered CSS, which always
+          // wins the cascade over a layered Tailwind bg-* utility
+          // regardless of source order — it was silently defeating
+          // `bg-felt-900` and leaving this popover too see-through to
+          // read reliably over arbitrary page content. See MISTAKES.md.
+          className="absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 rounded-card border border-felt-line bg-felt-900 p-3 text-left text-sm shadow-lg"
         >
           <span className="block font-medium text-gold-400">{entry.term}</span>
           {entry.formula && (

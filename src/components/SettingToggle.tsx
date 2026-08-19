@@ -46,13 +46,17 @@ export function SettingToggle({
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
+        // border-0/p-0 zero out the browser's native default button
+        // padding/border so the track is exactly the 44x24px this
+        // component assumes; overflow-hidden is a defensive clip so
+        // the thumb can never visually escape the rounded track.
+        className={`relative h-6 w-11 shrink-0 overflow-hidden rounded-full border-0 p-0 transition-colors disabled:opacity-40 ${
           checked ? "bg-gold-500" : "bg-felt-700"
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-card transition-transform ${
-            checked ? "translate-x-5" : "translate-x-0.5"
+          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-card transition-transform ${
+            checked ? "translate-x-5" : "translate-x-0"
           }`}
         />
       </button>

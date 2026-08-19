@@ -98,6 +98,34 @@ growth. If this call is wrong, add a `playDealerHand` function to
 call it instead of drawing a bare reference card — Play Mode will need
 that function regardless.
 
+## [2026-08-19] Unlayered `.felt-panel` CSS silently beat Tailwind bg-* utilities
+**What happened:** `.felt-panel` in `src/app/globals.css` is a plain
+CSS rule written after `@import "tailwindcss"`, so it isn't inside any
+of Tailwind's cascade layers (`theme`/`base`/`components`/`utilities`).
+Per the CSS Cascade Layers spec, unlayered rules always beat layered
+rules regardless of specificity or source order — so `.felt-panel`'s
+translucent `background: #ffffff0b` always won over a `bg-felt-900`
+utility class placed alongside it, no matter which class came first in
+the string. `<Term>`'s tooltip used `"felt-panel ... bg-felt-900 ..."`
+expecting a solid background and silently got the translucent one
+instead, making it too see-through to reliably read. Confirmed by
+inspecting the actual compiled dev-server stylesheet (`.bg-felt-900`
+inside `@layer utilities`, `.felt-panel` after the layer closes).
+**Why it's a problem:** The same `felt-panel` + `bg-felt-900` (or
+`bg-felt-700`, etc.) pairing appears in `CountingSystemSelect`,
+`ConfirmDialog`, and several `<select>`/`<input>` elements inline in
+both drill pages — all of those likely have the identical latent bug
+(intended solid background silently staying translucent), not just
+`<Term>`. Only `<Term>` was in scope for this fix; the others are
+still open.
+**Fix / rule going forward:** Never combine `.felt-panel` with a `bg-*`
+utility expecting the utility to win — it won't. Either drop
+`felt-panel` and write the border/radius/background explicitly (what
+`<Term>` now does), or give `.felt-panel` itself a layered/overridable
+background. Before styling a new element, check whether it already
+uses `felt-panel` + `bg-*` together — that combination is a bug
+magnet.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
