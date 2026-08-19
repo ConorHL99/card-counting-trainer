@@ -62,10 +62,14 @@ export function DealingTable({ hands }: DealingTableProps) {
         className="relative flex w-full flex-col items-center gap-6 overflow-hidden rounded-3xl border-2 border-gold-500/40 px-4 py-6 shadow-inner sm:px-8"
         style={TABLE_BACKGROUND}
       >
-        <FeltInscription />
         <DeckStack anchorRef={deckRef} />
 
         {dealer && <HandSlot hand={dealer} />}
+
+        {/* Normal-flow, not absolutely positioned with a guessed
+         * offset — sits in the actual gap between the dealer's cards
+         * and the seats row regardless of how tall either is. */}
+        <FeltInscription />
 
         <motion.div layout className="flex flex-wrap items-start justify-center gap-4">
           <AnimatePresence>
@@ -98,13 +102,13 @@ export function DealingTable({ hands }: DealingTableProps) {
 function FeltInscription() {
   return (
     <svg
-      viewBox="0 0 460 70"
+      viewBox="0 0 460 80"
       preserveAspectRatio="xMidYMid meet"
-      className="pointer-events-none absolute left-1/2 top-20 h-12 w-4/5 max-w-sm -translate-x-1/2 opacity-35 sm:top-24"
+      className="pointer-events-none h-14 w-4/5 max-w-sm opacity-35 sm:h-16"
       aria-hidden="true"
     >
-      <path id="dealing-table-arc" d="M 10 58 Q 230 0 450 58" fill="none" />
-      <text fontSize="22" fontWeight="800" letterSpacing="2" fill="var(--color-gold-400)">
+      <path id="dealing-table-arc" d="M 10 66 Q 230 4 450 66" fill="none" />
+      <text fontSize="28" fontWeight="800" letterSpacing="1" fill="var(--color-gold-400)">
         <textPath href="#dealing-table-arc" startOffset="50%" textAnchor="middle">
           BLACKJACK PAYS 3 TO 2
         </textPath>
@@ -165,16 +169,32 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
       dy = deckRect.top + deckRect.height / 2 - (cardRect.top + cardRect.height / 2);
     }
 
-    // Two concurrent animate() calls on the same element: slide/fade
-    // settles first (~220ms), the flip runs on its own afterward
-    // (~320ms, starting at +120ms) so the reveal is actually visible
-    // instead of blurring into the slide.
-    animate(
-      el,
-      { x: [dx, 0], y: [dy, 0], opacity: [0, 1], rotate: [-8, 0] },
-      { duration: 0.22, ease: "easeOut" },
-    );
-    animate(el, { rotateY: [180, 0] }, { duration: 0.32, delay: 0.12, ease: "easeInOut" });
+    let cancelled = false;
+
+    async function run() {
+      // Instantly face-down (no transition) before anything else runs,
+      // so there's never a frame showing the front face pre-slide.
+      animate(el, { rotateY: 180 }, { duration: 0 });
+
+      // Phase 1: slide from the deck to the hand position. rotateY is
+      // untouched here — the card stays face-down for the entire
+      // slide, not partway flipping while still moving.
+      await animate(
+        el,
+        { x: [dx, 0], y: [dy, 0], opacity: [0, 1], rotate: [-8, 0] },
+        { duration: 0.24, ease: "easeOut" },
+      );
+      if (cancelled) return;
+
+      // Phase 2: now stationary at its final position, flip once to
+      // reveal the face.
+      await animate(el, { rotateY: [180, 0] }, { duration: 0.28, ease: "easeInOut" });
+    }
+
+    run();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

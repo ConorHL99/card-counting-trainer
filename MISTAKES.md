@@ -210,6 +210,19 @@ leaves, then new hand arrives" moment. When two independently-correct
 animations share a screen position with no gap between them, the
 combination can still look wrong — evaluate transitions between states,
 not just each state's own animation in isolation.
+**Follow-up:** The exit fix wasn't sufficient on its own — user still
+saw the same symptom after it shipped. The remaining cause: the slide
+and the flip were two concurrent `animate()` calls, with the flip
+merely `delay`-started 120ms into the slide's 220ms, so for a ~100ms
+window the card was still *moving* while also *rotating* — visually
+indistinguishable from "a face flashing to back to a different face"
+during the old/new crossfade. `delay` staggers a start time; it
+doesn't guarantee the first animation has finished. Fixed by making it
+genuinely sequential: `await` the slide's `animate()` call before
+starting the flip's, so the flip only ever begins once the card is
+stationary. Lesson: when a user reports the *same* symptom after a fix
+that addressed a plausible-but-different cause, don't assume the fix
+was wrong — check whether it was incomplete instead.
 
 ## [2026-08-20] Card slide used a guessed offset instead of the deck's real position
 **What happened:** Cards entered with a fixed `{x: -36, y: -20}`
