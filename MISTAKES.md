@@ -15,6 +15,22 @@ Format per entry:
 
 ---
 
+## [2026-08-19] Scaffolding overwrote CLAUDE.md and .gitignore
+**What happened:** `create-next-app` can't target a directory with capital
+letters in its name (npm naming rules), so it was scaffolded into a temp
+dir and moved in with `Move-Item -Force`. That force-overwrote the
+existing `CLAUDE.md` (replaced with a generated `@AGENTS.md` stub) and
+the hand-written `.gitignore` (replaced with Next's default) since both
+trees had files of the same name.
+**Why it's a problem:** Could have silently destroyed the project's
+governing instructions file with no warning — only caught because git
+had it committed and `git diff`/`git checkout --` could recover it.
+**Fix / rule going forward:** When merging a scaffold tool's output into
+an existing directory, never blind-force-move/copy. Diff or list
+filename collisions first, and hand-merge any file that already exists
+in both trees (`CLAUDE.md`, `.gitignore`, `README.md`, etc.) instead of
+letting one side clobber the other.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
