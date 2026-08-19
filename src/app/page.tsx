@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center gap-6 px-4 py-16 text-center sm:px-6">
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-6 px-4 py-16 text-center sm:px-6">
       <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
         Card Counting Trainer
       </h1>

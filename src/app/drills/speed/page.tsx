@@ -64,7 +64,7 @@ export default function SpeedDrillPage() {
   const cardsPerSecond = (1000 / intervalMs).toFixed(1);
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-[60rem] flex-1 px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Speed Drill</h1>
       <p className="mt-1 text-sm text-ink-muted">
         Cards deal themselves, faster over time — keep the <Term id="running-count" /> as long as

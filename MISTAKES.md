@@ -189,6 +189,51 @@ absent rather than merely subtle, check layer *order*, not just each
 layer's own opacity — an opaque layer above will hide anything below
 it completely, and no per-layer tuning will surface it.
 
+## [2026-08-20] Flip looked broken: no exit animation made a new round look like one card mutating
+**What happened:** Per-card entry had a flip-in animation but
+deliberately no exit animation (to keep Speed Drill snappy) — old
+cards were removed from the DOM the instant a new round replaced them.
+Since the new card for the same hand position mounts in the exact same
+screen slot, the transition read as: old face → (instantly) card back
+→ flip to a *different* face — looking like a single card's identity
+was glitching mid-flip, when it was actually two separate cards (old
+one vanishing, new one's own flip beginning) with no visible
+separation between the two events.
+**Why it's a problem:** The animation was individually correct (each
+card's own back→front flip was right), but the *sequence of two
+cards sharing a position* had no visual seam, so it read as a bug in
+the flip itself rather than what it was — a missing transition between
+rounds.
+**Fix / rule going forward:** Reintroduced a short (~120ms) fade+scale
+exit for outgoing cards via `AnimatePresence`, giving a clear "old hand
+leaves, then new hand arrives" moment. When two independently-correct
+animations share a screen position with no gap between them, the
+combination can still look wrong — evaluate transitions between states,
+not just each state's own animation in isolation.
+
+## [2026-08-20] Card slide used a guessed offset instead of the deck's real position
+**What happened:** Cards entered with a fixed `{x: -36, y: -20}`
+offset meant to approximate "coming from the deck." Since the deck
+sits in a fixed corner while cards land at varying distances (dealer
+close by, seats further out), the same small constant offset was
+right for nothing in particular — it read as "drifting from the top
+of the box," not "sliding from the shoe," exactly as the user
+reported.
+**Why it's a problem:** A fixed directional approximation was chosen
+deliberately during planning to avoid live DOM measurement (flagged as
+a trade-off at the time), but the resulting motion didn't actually
+read as "from the deck" the way the spec asked for — the simplification
+traded away the one thing that made the effect legible.
+**Fix / rule going forward:** Switched to real measurement: the deck
+stack's DOM node is shared via React context, and each dealt card
+measures its own position relative to the deck's actual position in a
+`useLayoutEffect` (before paint, so there's no flash of the wrong
+start point), then animates imperatively via Framer Motion's
+`useAnimate` from that measured delta to zero. When a "simplified,
+no-measurement" approximation is chosen for robustness, check that it
+still achieves the actual visual goal before committing to it — here
+it didn't, for any hand more than a few pixels from the deck.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

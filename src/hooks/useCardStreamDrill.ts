@@ -20,9 +20,10 @@ export interface DealtCard {
   card: Card;
 }
 
-/** One table position's cards for the most recent round — the dealer
- * (or the lone drawn card when there's no seat structure) plus one
- * entry per active simulated seat. */
+/** One table position's cards for the most recent round — the dealer,
+ * the user's own hand, and one entry per active simulated seat (or
+ * just the lone drawn card in flashcard mode, which has no hand
+ * structure at all). */
 export interface TableHand {
   id: string;
   label: string;
@@ -152,10 +153,15 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
     if (reshuffled) shoe.shuffle();
 
     let hands: TableHand[];
-    if (dealMode === "single-card" || seats.length === 0) {
+    if (dealMode === "single-card") {
       hands = [{ id: "draw", label: "", cards: [wrapCard(shoe.draw())] }];
     } else {
+      // Any shoe-mode round deals the dealer's card and the user's own
+      // two-card hand — a real hand at the table, not just a bystander
+      // watching. Simulated seats (if any) add further two-card hands
+      // on top of that, not in place of it.
       const referenceCard = shoe.draw();
+      const yourCards = [wrapCard(shoe.draw()), wrapCard(shoe.draw())];
       const seatHands: TableHand[] = seats.map((seat, i) => {
         const initial: [Card, Card] = [shoe.draw(), shoe.draw()];
         const results = playSimulatedSeatHand(shoe, seat.skill, initial, referenceCard);
@@ -165,7 +171,11 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
           cards: results.flatMap((hand) => hand.cards).map(wrapCard),
         };
       });
-      hands = [{ id: "dealer", label: "Dealer", cards: [wrapCard(referenceCard)] }, ...seatHands];
+      hands = [
+        { id: "dealer", label: "Dealer", cards: [wrapCard(referenceCard)] },
+        { id: "you", label: "You", cards: yourCards },
+        ...seatHands,
+      ];
     }
 
     // Single source of truth: derive the flat card list (for count
