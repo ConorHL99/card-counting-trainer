@@ -8,7 +8,7 @@ const LINKS = [
 export function NavHeader() {
   return (
     <header className="border-b border-felt-line">
-      <nav className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
+      <nav className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
         <Link href="/" className="font-semibold tracking-tight text-gold-400">
           Card Counting Trainer
         </Link>

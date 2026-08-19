@@ -13,7 +13,7 @@ export default function RunningCountDrillPage() {
   const [revealCount, setRevealCount] = useState(false);
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Running Count Drill</h1>
       <p className="mt-1 text-sm text-ink-muted">
         Watch the cards, keep a <Term id="running-count" /> in your head, then check yourself.

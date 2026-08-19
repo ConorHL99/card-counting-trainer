@@ -166,6 +166,29 @@ never on a proxy value that merely correlates with it (`seats.length`)
 SPEC.md §7.2 to say this explicitly so it can't be misread the same
 way again.
 
+## [2026-08-20] Invisible felt texture: opaque top layer covered the noise
+**What happened:** `DealingTable`'s felt background used a two-layer
+`background-image: radial-gradient(...), url(noiseSvg)`. In a
+multi-layer `background-image`, the FIRST-listed layer paints on top.
+The gradient was listed first and is fully opaque (solid colors, no
+alpha), so it completely covered the noise layer underneath it —
+regardless of the noise's own opacity or frequency. The texture was
+never visible, on any browser, at any zoom level; there was nothing
+subtle to tune.
+**Why it's a problem:** Looked like a "make it more visible" tuning
+problem (opacity/frequency), which is what it was first mistaken for,
+but no amount of tuning those values would have fixed a layer that's
+fully hidden behind an opaque layer on top of it. Caught by re-deriving
+the CSS layering rule from first principles while addressing the
+user's screenshot-confirmed report, not by visual inspection (no
+browser tool available this session).
+**Fix / rule going forward:** In a multi-layer background-image, the
+translucent/detail layer must be listed BEFORE (on top of) the opaque
+base layer, not after. When a layered visual effect seems completely
+absent rather than merely subtle, check layer *order*, not just each
+layer's own opacity — an opaque layer above will hide anything below
+it completely, and no per-layer tuning will surface it.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

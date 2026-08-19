@@ -42,9 +42,9 @@ const DRILLS: DrillEntry[] = [
 
 export default function DrillsPage() {
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 sm:px-6">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
       <h1 className="mb-6 text-2xl font-semibold tracking-tight text-ink">Practice Drills</h1>
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {DRILLS.map((drill) => (
           <li key={drill.href}>
             {drill.available ? (

@@ -49,7 +49,9 @@ function wrapCard(card: Card): DealtCard {
  */
 export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
   const [systemId, setSystemId] = useState(initialSystemId);
-  const [dealMode, setDealMode] = useState<DealMode>("single-card");
+  // Shoe mode by default — the realistic table view is the primary
+  // experience; flashcard mode is an opt-out via the toggle.
+  const [dealMode, setDealMode] = useState<DealMode>("shoe");
   const [deckCount, setDeckCount] = useState(6);
   const [penetration, setPenetration] = useState(0.75);
   const [seats, setSeats] = useState<DrillSeat[]>([]);
