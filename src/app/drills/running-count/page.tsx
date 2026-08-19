@@ -182,7 +182,7 @@ export default function RunningCountDrillPage() {
                   id="deck-count"
                   value={deckCount}
                   onChange={(e) => handleDeckCountChange(Number(e.target.value))}
-                  className="felt-panel w-full rounded-card bg-felt-900 px-3 py-2 text-sm text-ink"
+                  className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink"
                 >
                   {DECK_OPTIONS.map((n) => (
                     <option key={n} value={n}>
@@ -199,7 +199,7 @@ export default function RunningCountDrillPage() {
                   id="penetration"
                   value={penetration}
                   onChange={(e) => handlePenetrationChange(Number(e.target.value))}
-                  className="felt-panel w-full rounded-card bg-felt-900 px-3 py-2 text-sm text-ink"
+                  className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink"
                 >
                   {PENETRATION_OPTIONS.map((p) => (
                     <option key={p} value={p}>
@@ -310,7 +310,7 @@ export default function RunningCountDrillPage() {
             inputMode="numeric"
             value={guess}
             onChange={(e) => setGuess(e.target.value)}
-            className="felt-panel w-20 rounded-card bg-felt-900 px-2 py-1 text-sm text-ink"
+            className="w-20 rounded-card border border-felt-line bg-felt-900 px-2 py-1 text-sm text-ink"
           />
           <button
             type="button"

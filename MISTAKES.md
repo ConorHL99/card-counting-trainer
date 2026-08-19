@@ -111,13 +111,11 @@ expecting a solid background and silently got the translucent one
 instead, making it too see-through to reliably read. Confirmed by
 inspecting the actual compiled dev-server stylesheet (`.bg-felt-900`
 inside `@layer utilities`, `.felt-panel` after the layer closes).
-**Why it's a problem:** The same `felt-panel` + `bg-felt-900` (or
-`bg-felt-700`, etc.) pairing appears in `CountingSystemSelect`,
-`ConfirmDialog`, and several `<select>`/`<input>` elements inline in
-both drill pages — all of those likely have the identical latent bug
-(intended solid background silently staying translucent), not just
-`<Term>`. Only `<Term>` was in scope for this fix; the others are
-still open.
+**Why it's a problem:** The same `felt-panel` + `bg-felt-900` pairing
+also appeared in `CountingSystemSelect`, `ConfirmDialog`, and the
+`<select>`/`<input>` elements inline in both drill pages — all had the
+identical latent bug. Fixed in a same-day follow-up across every
+occurrence, verified against each page's rendered HTML output.
 **Fix / rule going forward:** Never combine `.felt-panel` with a `bg-*`
 utility expecting the utility to win — it won't. Either drop
 `felt-panel` and write the border/radius/background explicitly (what

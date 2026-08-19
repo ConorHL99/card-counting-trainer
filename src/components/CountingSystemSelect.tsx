@@ -26,7 +26,7 @@ export function CountingSystemSelect({ id, value, onChange, filter }: CountingSy
       id={id}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="felt-panel w-full rounded-card bg-felt-900 px-3 py-2 text-sm text-ink"
+      className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink"
     >
       {DIFFICULTY_TIERS.map((tier) => {
         const systems = listCountingSystemsByDifficulty(tier).filter(

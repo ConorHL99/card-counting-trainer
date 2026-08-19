@@ -37,7 +37,7 @@ export function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="felt-panel w-full max-w-sm bg-felt-900 p-5"
+        className="w-full max-w-sm rounded-card border border-felt-line bg-felt-900 p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="confirm-dialog-title" className="text-base font-semibold text-ink">
