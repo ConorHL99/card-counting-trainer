@@ -2,34 +2,34 @@
 
 import { useState } from "react";
 import { generateTrueCountScenario, type TrueCountScenario } from "@/lib/counting";
+import { BET_RAMP, getBetUnits } from "@/lib/betting";
 import { CountingSystemSelect } from "@/components/CountingSystemSelect";
 import { SettingToggle } from "@/components/SettingToggle";
 import { Term } from "@/components/Term";
 
 const DECK_OPTIONS = [1, 2, 4, 6, 8];
+const BET_OPTIONS = Array.from(new Set(BET_RAMP.map((step) => step.units)));
 
-export default function TrueCountDrillPage() {
+export default function BetSizingDrillPage() {
   const [systemId, setSystemId] = useState("hi-lo");
   const [deckCount, setDeckCount] = useState(6);
   const [revealAnswer, setRevealAnswer] = useState(false);
   const [scenario, setScenario] = useState<TrueCountScenario>(() =>
     generateTrueCountScenario("hi-lo", 6),
   );
-  const [guess, setGuess] = useState("");
+  const [selectedUnits, setSelectedUnits] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<null | { correct: boolean; actual: number }>(null);
 
   function newScenario(nextSystemId: string = systemId, nextDeckCount: number = deckCount) {
     setScenario(generateTrueCountScenario(nextSystemId, nextDeckCount));
-    setGuess("");
+    setSelectedUnits(null);
     setFeedback(null);
   }
 
   function handleSystemChange(nextId: string) {
-    // No confirmation dialog here (unlike the Running Count Drill):
-    // each scenario is independently generated with no accumulated
-    // session count to lose, so switching systems is equivalent to
-    // clicking "New Scenario" — there's no stale-count state to guard
-    // against. See MISTAKES.md.
+    // No confirmation dialog: each scenario is independently generated
+    // with no accumulated session count to lose, same reasoning as the
+    // True Count Conversion Drill (see MISTAKES.md).
     setSystemId(nextId);
     newScenario(nextId, deckCount);
   }
@@ -40,20 +40,16 @@ export default function TrueCountDrillPage() {
   }
 
   function checkGuess() {
-    const parsed = Number(guess);
-    if (Number.isNaN(parsed) || guess.trim() === "") return;
-    const rounded = Math.round(parsed * 10) / 10;
-    setFeedback({ correct: rounded === scenario.trueCount, actual: scenario.trueCount });
+    if (selectedUnits === null) return;
+    const actual = getBetUnits(scenario.trueCount);
+    setFeedback({ correct: selectedUnits === actual, actual });
   }
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">
-        True Count Conversion Drill
-      </h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Bet-Sizing Drill</h1>
       <p className="mt-1 text-sm text-ink-muted">
-        Given a <Term id="running-count" /> and <Term id="decks-remaining" />, convert to{" "}
-        <Term id="true-count" />.
+        Given a <Term id="true-count" />, choose the correct bet size from the ramp below.
       </p>
 
       <section className="felt-panel mt-6 flex flex-col gap-4 p-4">
@@ -68,7 +64,8 @@ export default function TrueCountDrillPage() {
             filter={(system) => system.balanced}
           />
           <p className="mt-1 text-xs text-ink-muted">
-            Only <Term id="balanced-count">balanced</Term> systems use true-count conversion.
+            Only <Term id="balanced-count">balanced</Term> systems produce a true count to bet
+            off.
           </p>
         </div>
 
@@ -92,7 +89,7 @@ export default function TrueCountDrillPage() {
 
         <SettingToggle
           id="reveal-answer"
-          label="Reveal count"
+          label="Reveal correct action"
           checked={revealAnswer}
           onChange={setRevealAnswer}
           offHint="hidden — test yourself"
@@ -101,46 +98,52 @@ export default function TrueCountDrillPage() {
       </section>
 
       <section className="felt-panel mt-6 p-4">
-        <dl className="grid grid-cols-2 gap-4 text-center">
-          <div>
-            <dt className="text-xs text-ink-muted">
-              <Term id="running-count">Running count</Term>
-            </dt>
-            <dd className="text-2xl font-semibold text-gold-400">{scenario.runningCount}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-ink-muted">
-              <Term id="decks-remaining">Decks remaining</Term>
-            </dt>
-            <dd className="text-2xl font-semibold text-gold-400">
-              {scenario.decksRemaining.toFixed(1)}
-            </dd>
-          </div>
-        </dl>
+        <p className="text-xs font-medium text-ink-muted">Bet ramp (reference)</p>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs text-ink-muted">
+          {BET_RAMP.map((step, i) => (
+            <span key={i} className="rounded-card border border-felt-line px-2 py-1">
+              TC {step.minTrueCount === -Infinity ? "≤ 1" : `≥ ${step.minTrueCount}`}: {step.units}
+              x
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="felt-panel mt-6 p-4 text-center">
+        <p className="text-xs text-ink-muted">
+          <Term id="true-count">True count</Term>
+        </p>
+        <p className="text-3xl font-semibold text-gold-400">{scenario.trueCount}</p>
 
         {revealAnswer && (
-          <p className="mt-4 text-center text-sm font-medium text-ink">
-            True count: <span className="text-gold-400">{scenario.trueCount}</span>
+          <p className="mt-3 text-sm font-medium text-ink">
+            Correct bet: <span className="text-gold-400">{getBetUnits(scenario.trueCount)}x</span>
           </p>
         )}
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-          <label htmlFor="guess" className="text-sm text-ink-muted">
-            True count:
-          </label>
-          <input
-            id="guess"
-            type="number"
-            step="0.1"
-            inputMode="decimal"
-            value={guess}
-            onChange={(e) => setGuess(e.target.value)}
-            className="w-24 rounded-card border border-felt-line bg-felt-900 px-2 py-1 text-sm text-ink"
-          />
+          {BET_OPTIONS.map((units) => (
+            <button
+              key={units}
+              type="button"
+              onClick={() => setSelectedUnits(units)}
+              className={`rounded-card border px-4 py-2 text-sm font-medium transition-colors ${
+                selectedUnits === units
+                  ? "border-gold-500 bg-gold-500 text-felt-950"
+                  : "border-felt-line bg-felt-900 text-ink hover:border-gold-500/60"
+              }`}
+            >
+              {units}x
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             onClick={checkGuess}
-            className="rounded-card bg-felt-700 px-3 py-1.5 text-sm font-medium text-ink hover:bg-felt-800"
+            disabled={selectedUnits === null}
+            className="rounded-card bg-felt-700 px-3 py-1.5 text-sm font-medium text-ink hover:bg-felt-800 disabled:opacity-40"
           >
             Check
           </button>
@@ -148,9 +151,9 @@ export default function TrueCountDrillPage() {
 
         {feedback && (
           <p
-            className={`mt-2 text-center text-sm ${feedback.correct ? "text-success" : "text-danger"}`}
+            className={`mt-2 text-sm ${feedback.correct ? "text-success" : "text-danger"}`}
           >
-            {feedback.correct ? "Correct!" : `Actual: ${feedback.actual}`}
+            {feedback.correct ? "Correct!" : `Correct bet: ${feedback.actual}x`}
           </p>
         )}
 

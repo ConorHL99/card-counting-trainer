@@ -36,7 +36,7 @@ const DRILLS: DrillEntry[] = [
     href: "/drills/bet-sizing",
     title: "Bet Sizing",
     description: "Given a true count, choose the right bet size.",
-    available: false,
+    available: true,
   },
 ];
 

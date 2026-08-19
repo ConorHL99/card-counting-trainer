@@ -124,6 +124,27 @@ background. Before styling a new element, check whether it already
 uses `felt-panel` + `bg-*` together — that combination is a bug
 magnet.
 
+## [2026-08-19] Design call: bet-sizing ramp lives outside CountingSystemConfig
+**What happened:** SPEC.md §5.3 lists a "Bet-sizing drill (given a
+true count, choose bet size)" but never defines the actual true-count
+→ bet-size mapping. Built one as its own module
+(`src/lib/betting/bet-ramp.ts`, a simple ramp keyed only on true
+count) rather than adding a `betRamp` field to `CountingSystemConfig`.
+**Reasoning:** A given true count means the same thing for betting
+purposes regardless of which counting system produced it — betting
+strategy is a function of true count, not of tag values or
+balanced-ness. Putting it on `CountingSystemConfig` would conflate two
+unrelated concerns and violate the config schema SPEC.md §3 actually
+defines (id/name/difficulty/tagValues/balanced/correlations/
+supportsDeviations — no betting field). Used the "1-2-4-6-8" spread
+commonly cited in card-counting literature (e.g. Schlesinger's
+"Blackjack Attack") as a defensible default rather than inventing
+arbitrary numbers.
+**If this call is wrong:** the ramp is fully isolated in one file with
+one exported function (`getBetUnits`) — swapping the numbers, or
+making the ramp itself user-configurable, touches only
+`src/lib/betting/bet-ramp.ts` and nothing else.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
