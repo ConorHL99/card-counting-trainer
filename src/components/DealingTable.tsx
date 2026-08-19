@@ -5,6 +5,7 @@ import {
   useContext,
   useLayoutEffect,
   useRef,
+  useState,
   type CSSProperties,
   type RefObject,
 } from "react";
@@ -150,9 +151,23 @@ function HandSlot({ hand }: { hand: TableHand }) {
   );
 }
 
+/**
+ * The flip is deliberately NOT a true 3D rotateY transform. Three
+ * attempts at that (perspective + preserve-3d + backface-visibility +
+ * a static-rotated back face) all broke in different ways — including
+ * rendering the front face at an angle without properly hiding it
+ * (visibly mirrored text), which a raw DOM element driven by
+ * useAnimate apparently doesn't handle as reliably as a declarative
+ * <motion.*> component would. Switched to a much simpler, structurally
+ * safer technique: squish to a sliver via scaleX (a single ordinary 2D
+ * transform), swap the rendered content at the invisible midpoint,
+ * unsquish. This cannot mirror text — the face is only ever scaled,
+ * never rendered at an angle. See MISTAKES.md.
+ */
 function DealtCardView({ dealt }: { dealt: DealtCard }) {
   const deckRef = useContext(DeckAnchorContext);
   const [scope, animate] = useAnimate<HTMLDivElement>();
+  const [revealed, setRevealed] = useState(false);
 
   useLayoutEffect(() => {
     const el = scope.current;
@@ -175,36 +190,30 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
     let activeAnimation: ReturnType<typeof animate> | null = null;
 
     async function run() {
-      // Instantly establish the starting state — every property that
-      // either phase touches, all at once. Each animate() call below
-      // also restates every property explicitly (not just the ones
-      // changing): calling animate() repeatedly on a raw DOM element
-      // (not a <motion.*> component) doesn't reliably preserve a
-      // property that a later call omits, so leaving rotateY out of
-      // phase 1 let it drift back toward 0 — the card showed its face
-      // during the slide, then phase 2's explicit [180, 0] forced a
-      // snap back to 180 before flipping, reading as two flips. See
-      // MISTAKES.md.
-      animate(el, { x: dx, y: dy, opacity: 0, rotate: -8, rotateY: 180 }, { duration: 0 });
-
-      // Phase 1: slide from the deck to the hand position, face-down
-      // throughout — rotateY is explicitly held at 180, not omitted.
+      // Phase 1: slide + fade in from the deck. Explicit [from, to]
+      // arrays for every property — not a separate prior "instant
+      // setup" call that phase 1 then implicitly relies on. That
+      // pattern raced: phase 1's own animation could construct its
+      // "current value" before the setup call had actually committed,
+      // making the slide a no-op (start == end). Each animate() call
+      // here is fully self-contained.
       activeAnimation = animate(
         el,
-        { x: 0, y: 0, opacity: 1, rotate: 0, rotateY: 180 },
+        { x: [dx, 0], y: [dy, 0], opacity: [0, 1], rotate: [-8, 0] },
         { duration: 0.24, ease: "easeOut" },
       );
       await activeAnimation;
       if (stopped) return;
 
-      // Phase 2: now stationary at its final position — x/y/opacity/
-      // rotate pinned at their resting values, only rotateY animates,
-      // from whatever it currently is (180) to 0.
-      activeAnimation = animate(
-        el,
-        { x: 0, y: 0, opacity: 1, rotate: 0, rotateY: 0 },
-        { duration: 0.28, ease: "easeInOut" },
-      );
+      // Phase 2: flip in place — squish, swap content while invisible,
+      // unsquish.
+      activeAnimation = animate(el, { scaleX: [1, 0] }, { duration: 0.14, ease: "easeIn" });
+      await activeAnimation;
+      if (stopped) return;
+
+      setRevealed(true);
+
+      activeAnimation = animate(el, { scaleX: [0, 1] }, { duration: 0.14, ease: "easeOut" });
       await activeAnimation;
     }
 
@@ -213,9 +222,8 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
     // React Strict Mode (dev only) mounts effects twice — the first
     // invocation's cleanup must actually halt the in-flight animation
     // via .stop(), not just set a flag, or its flip can partially play
-    // before the second (real) invocation starts its own, looking
-    // like the card flips twice even though its content never
-    // changed. See MISTAKES.md.
+    // before the second (real) invocation starts its own. See
+    // MISTAKES.md.
     return () => {
       stopped = true;
       activeAnimation?.stop();
@@ -224,19 +232,8 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
   }, []);
 
   return (
-    <motion.div
-      exit={{ opacity: 0, scale: 0.85 }}
-      transition={{ duration: 0.12 }}
-      className="[perspective:600px]"
-    >
-      <div ref={scope} className="relative [transform-style:preserve-3d]" style={{ opacity: 0 }}>
-        <div className="[backface-visibility:hidden]">
-          <PlayingCardView card={dealt.card} />
-        </div>
-        <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-          <CardBackView />
-        </div>
-      </div>
+    <motion.div exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.12 }}>
+      <div ref={scope}>{revealed ? <PlayingCardView card={dealt.card} /> : <CardBackView />}</div>
     </motion.div>
   );
 }

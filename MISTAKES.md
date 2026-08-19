@@ -306,6 +306,36 @@ properties (including the ones not changing in that phase), and phase
 than forcing a from-value — removing any reliance on cross-call state
 persistence entirely.
 
+## [2026-08-20] Abandoned the 3D rotateY flip entirely after three failed fixes
+**What happened:** Even after the explicit-properties fix, the user
+reported the front face rendering *mirrored* (backwards text) before
+the double-flip, and the slide from the deck had stopped working
+entirely. The mirrored text meant `backface-visibility: hidden` (or
+`transform-style: preserve-3d` on its parent) wasn't actually taking
+effect on the raw DOM element the way the same CSS would on a
+declarative `<motion.*>` component — the front face was being rendered
+at an angle instead of hidden. The broken slide was a second, separate
+regression introduced by the same fix: an un-awaited "instant setup"
+`animate()` call followed immediately by a second `animate()` call
+that implicitly relied on the first having already committed — a race
+that could make the slide's own from-value equal its to-value (no
+visible movement) if the setup call hadn't applied yet.
+**Why it's a problem:** Three consecutive fixes to the same 3D-CSS +
+imperative-animation technique each surfaced a new failure mode
+without a browser to verify against. Continuing to patch increasingly
+subtle interactions between Tailwind arbitrary 3D-transform properties
+and Framer Motion's imperative `useAnimate` on a raw DOM element was
+not converging — each fix traded one bug for another.
+**Fix / rule going forward:** Replaced the entire technique. The flip
+is now a `scaleX` squish-to-a-sliver, a React-state content swap at
+the invisible midpoint, then unsquish — a single ordinary 2D transform
+with no `perspective`, `preserve-3d`, or `backface-visibility`
+involved at all, and no possibility of showing content "at an angle"
+that could mirror. When a specific technique fails repeatedly across
+several targeted fixes without the ability to visually verify each
+one, prefer switching to a structurally simpler technique over a
+fourth attempt at patching the same fragile one.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
