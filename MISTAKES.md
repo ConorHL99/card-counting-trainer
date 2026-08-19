@@ -51,6 +51,25 @@ runtime smoke test that asserts card-count invariants (cards consumed
 from shoe == cards appearing in results) — type checking alone won't
 catch this class of bug.
 
+## [2026-08-19] Design call: felt theme is fixed dark, no light/dark toggle
+**What happened:** SPEC.md §7 says "casino felt design tokens apply
+app-wide" but doesn't say whether the app should also support a
+light-mode variant (the scaffold's default `globals.css` had a
+`prefers-color-scheme: dark` media query for the stock Next.js theme).
+Decided to make the felt palette a single fixed dark theme with no
+light-mode branch at all, rather than defining a light felt variant.
+**Why it's a problem (assumption, not a caught mistake):** This isn't
+corrected-after-the-fact; it's a genuine spec ambiguity where I made a
+call rather than stopping to ask, per this session's standing
+instruction to note reasoning and continue.
+**Reasoning:** A casino table doesn't have a "light mode" — the felt
+green/gold aesthetic is the whole visual identity (SPEC §7), and a
+light-background variant would work against "Theory and Drill pages
+should feel part of the same product" rather than support it. If this
+assumption is wrong, the fix is additive (add a light palette under
+the same design-token names in `src/app/globals.css`) — nothing built
+on top of the tokens should need to change.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
