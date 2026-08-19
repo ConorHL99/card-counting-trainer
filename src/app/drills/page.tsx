@@ -23,7 +23,7 @@ const DRILLS: DrillEntry[] = [
   {
     href: "/drills/speed",
     title: "Speed Drill",
-    description: "Timed, increasing card rate.",
+    description: "Timed, fixed pace you control.",
     available: true,
   },
   {

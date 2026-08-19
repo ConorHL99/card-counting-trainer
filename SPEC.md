@@ -169,8 +169,8 @@ Play Mode — never a per-page/per-feature card renderer.
 
 - Cards animate from a deck position to their hand position when
   dealt, rather than appearing instantly. The animation must stay
-  snappy enough not to slow down drill pace, especially under the
-  Speed Drill's increasing card rate.
+  snappy enough not to slow down drill pace, even at the Speed
+  Drill's fastest configured setting.
 - Hands are laid out in realistic table positions around the felt —
   a dealer position plus one position per active hand (the user's own
   hand and each simulated seat, see §4.1) — not a flat list or grid of
