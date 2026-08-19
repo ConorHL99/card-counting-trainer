@@ -8,9 +8,16 @@ import { DealingTable } from "@/components/DealingTable";
 import { PlayingCardView } from "@/components/PlayingCard";
 import { Term } from "@/components/Term";
 
-const START_INTERVAL_MS = 2500;
+const DEFAULT_START_INTERVAL_MS = 2500;
 const MIN_INTERVAL_MS = 400;
 const SPEEDUP_FACTOR = 0.93;
+
+const SPEED_OPTIONS = [
+  { label: "Slow", ms: 3500 },
+  { label: "Normal", ms: 2500 },
+  { label: "Fast", ms: 1500 },
+  { label: "Very fast", ms: 1000 },
+];
 
 /** Wraps a handler so any config change stops the auto-dealer first —
  * reconfiguring the shoe while cards are actively flying by would be
@@ -26,7 +33,8 @@ export default function SpeedDrillPage() {
   const drill = useCardStreamDrill("hi-lo");
   const [revealCount, setRevealCount] = useState(false);
   const [running, setRunning] = useState(false);
-  const [intervalMs, setIntervalMs] = useState(START_INTERVAL_MS);
+  const [startIntervalMs, setStartIntervalMs] = useState(DEFAULT_START_INTERVAL_MS);
+  const [intervalMs, setIntervalMs] = useState(DEFAULT_START_INTERVAL_MS);
 
   // Keep the latest dealNext available to the timer's callback without
   // making it an effect dependency — dealNext's identity changes every
@@ -57,8 +65,17 @@ export default function SpeedDrillPage() {
 
   function restart() {
     setRunning(false);
-    setIntervalMs(START_INTERVAL_MS);
+    setIntervalMs(startIntervalMs);
     drill.resetSession();
+  }
+
+  function handleStartSpeedChange(nextStartIntervalMs: number) {
+    setStartIntervalMs(nextStartIntervalMs);
+    // Applies immediately, whether running or stopped — "speed" always
+    // reflects the current pace, not just where a future session
+    // begins. Doesn't touch the shoe or count, so no need to stop the
+    // auto-dealer first the way shoe/system config changes do.
+    setIntervalMs(nextStartIntervalMs);
   }
 
   const cardsPerSecond = (1000 / intervalMs).toFixed(1);
@@ -70,6 +87,28 @@ export default function SpeedDrillPage() {
         Cards deal themselves, faster over time — keep the <Term id="running-count" /> as long as
         you can.
       </p>
+
+      <div className="felt-panel mt-6 p-4">
+        <label htmlFor="start-speed" className="mb-1 block text-sm font-medium text-ink">
+          Starting speed
+        </label>
+        <select
+          id="start-speed"
+          value={startIntervalMs}
+          onChange={(e) => handleStartSpeedChange(Number(e.target.value))}
+          className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink sm:w-auto"
+        >
+          {SPEED_OPTIONS.map((option) => (
+            <option key={option.ms} value={option.ms}>
+              {option.label} ({(1000 / option.ms).toFixed(1)} cards/sec)
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-ink-muted">
+          Sets the pace right now, and where each new round after a restart begins — it still
+          speeds up from there as you go.
+        </p>
+      </div>
 
       <div className="mt-6">
         <DrillConfigPanel

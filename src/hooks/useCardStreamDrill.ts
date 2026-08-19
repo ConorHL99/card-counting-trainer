@@ -147,35 +147,53 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
     );
   }
 
+  function buildRoundHands(shoe: Shoe): TableHand[] {
+    if (dealMode === "single-card") {
+      return [{ id: "draw", label: "", cards: [wrapCard(shoe.draw())] }];
+    }
+    // Any shoe-mode round deals the dealer's card and the user's own
+    // two-card hand — a real hand at the table, not just a bystander
+    // watching. Simulated seats (if any) add further two-card hands
+    // on top of that, not in place of it.
+    const referenceCard = shoe.draw();
+    const yourCards = [wrapCard(shoe.draw()), wrapCard(shoe.draw())];
+    const seatHands: TableHand[] = seats.map((seat, i) => {
+      const initial: [Card, Card] = [shoe.draw(), shoe.draw()];
+      const results = playSimulatedSeatHand(shoe, seat.skill, initial, referenceCard);
+      return {
+        id: seat.id,
+        label: `Seat ${i + 1}`,
+        cards: results.flatMap((hand) => hand.cards).map(wrapCard),
+      };
+    });
+    return [
+      { id: "dealer", label: "Dealer", cards: [wrapCard(referenceCard)] },
+      { id: "you", label: "You", cards: yourCards },
+      ...seatHands,
+    ];
+  }
+
   function dealNext() {
     const shoe = shoeRef.current;
-    const reshuffled = dealMode === "shoe" && shoe.needsShuffle;
+    let reshuffled = dealMode === "shoe" && shoe.needsShuffle;
     if (reshuffled) shoe.shuffle();
 
+    // A round's actual card need is variable (seats can split/hit
+    // unpredictably), so the penetration threshold above is a
+    // best-effort trigger, not a guarantee there are enough cards
+    // left. If the shoe still runs out mid-round, reshuffle to a full
+    // shoe and rebuild the round from scratch rather than letting the
+    // draw() exception escape — an uncaught throw here would silently
+    // kill Speed Drill's recurring timer (it never reaches the code
+    // that schedules the next tick), leaving dealing stopped until a
+    // manual restart. See MISTAKES.md.
     let hands: TableHand[];
-    if (dealMode === "single-card") {
-      hands = [{ id: "draw", label: "", cards: [wrapCard(shoe.draw())] }];
-    } else {
-      // Any shoe-mode round deals the dealer's card and the user's own
-      // two-card hand — a real hand at the table, not just a bystander
-      // watching. Simulated seats (if any) add further two-card hands
-      // on top of that, not in place of it.
-      const referenceCard = shoe.draw();
-      const yourCards = [wrapCard(shoe.draw()), wrapCard(shoe.draw())];
-      const seatHands: TableHand[] = seats.map((seat, i) => {
-        const initial: [Card, Card] = [shoe.draw(), shoe.draw()];
-        const results = playSimulatedSeatHand(shoe, seat.skill, initial, referenceCard);
-        return {
-          id: seat.id,
-          label: `Seat ${i + 1}`,
-          cards: results.flatMap((hand) => hand.cards).map(wrapCard),
-        };
-      });
-      hands = [
-        { id: "dealer", label: "Dealer", cards: [wrapCard(referenceCard)] },
-        { id: "you", label: "You", cards: yourCards },
-        ...seatHands,
-      ];
+    try {
+      hands = buildRoundHands(shoe);
+    } catch {
+      shoe.shuffle();
+      reshuffled = true;
+      hands = buildRoundHands(shoe);
     }
 
     // Single source of truth: derive the flat card list (for count

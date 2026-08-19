@@ -336,6 +336,36 @@ several targeted fixes without the ability to visually verify each
 one, prefer switching to a structurally simpler technique over a
 fourth attempt at patching the same fragile one.
 
+## [2026-08-20] Shoe exhaustion mid-round silently killed Speed Drill's timer
+**What happened:** `dealNext()` only checked `shoe.needsShuffle` (a
+penetration-percentage threshold, e.g. 75%) once at the start of each
+round to decide whether to reshuffle. A round's actual card need is
+variable — several seats splitting/hitting can consume well more than
+a typical round — so a round could start when `needsShuffle` was still
+false (enough of a *threshold* buffer left) but run out of *physical*
+cards partway through anyway, throwing "Shoe is empty" from inside
+`Shoe.draw()`. In Running Count Drill (button click) this just failed
+one click silently. In Speed Drill, the throw happened inside the
+recurring `setTimeout` callback, before the line that schedules the
+next tick — so the callback never got there, the timer's `useEffect`
+never rescheduled, and dealing stopped permanently until the user hit
+Restart (which builds a fresh shoe from scratch).
+**Why it's a problem:** A threshold-based check ("have we crossed X%
+penetration") is not the same guarantee as "are there enough cards for
+what happens next" when what happens next has unpredictable size. The
+gap between those two only shows up right as a shoe empties, which is
+exactly what the user reported ("towards the end of all the
+decks/cards... stops and no more come out").
+**Fix / rule going forward:** Wrapped the round-building logic in a
+try/catch inside `dealNext()`: if a draw ever throws (shoe genuinely
+out of physical cards), reshuffle to a full shoe and rebuild the round
+from scratch, rather than letting the exception propagate. This
+guarantees correctness regardless of how many cards any given round
+actually needs — no need to guess a safety-margin threshold. Verified
+with a smoke test that manually depletes a shoe to 2 cards and forces
+a 3-seat round (which would have thrown pre-fix) to confirm it now
+recovers cleanly.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
