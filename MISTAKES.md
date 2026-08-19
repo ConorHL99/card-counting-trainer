@@ -31,6 +31,26 @@ filename collisions first, and hand-merge any file that already exists
 in both trees (`CLAUDE.md`, `.gitignore`, `README.md`, etc.) instead of
 letting one side clobber the other.
 
+## [2026-08-19] Ace-split hand dealt a card twice in the shoe engine
+**What happened:** In `playSimulatedSeatHand` (src/lib/shoe/seats.ts),
+splitting a pair of aces dealt the queued "first" hand its post-split
+card at push time (`[a, shoe.draw()]`) *and* dealt it another card
+again when later dequeued via the `fromSplitAces` branch — three cards
+on a hand that should only ever get two. Caught by a runtime smoke
+test asserting split-ace hands have exactly 2 cards, not by type
+checking or lint (both passed with the bug present).
+**Why it's a problem:** An extra undealt-in-reality card silently
+desyncs the shoe from what a real table would have dealt — exactly the
+kind of count-accuracy bug rule #2/#9 exist to prevent, just introduced
+inside the shared engine itself rather than by a caller bypassing it.
+**Fix / rule going forward:** When a state machine hands off
+in-progress state between two code paths (queued vs. immediately
+continued), only one path may own a given side effect (here: dealing
+the card). After any non-trivial change to shoe/seat logic, run a
+runtime smoke test that asserts card-count invariants (cards consumed
+from shoe == cards appearing in results) — type checking alone won't
+catch this class of bug.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
