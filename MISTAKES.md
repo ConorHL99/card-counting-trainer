@@ -447,6 +447,25 @@ one array (`DEVIATION_RULES`) — adding, correcting, or expanding to
 the complete canonical 22-entry list against a verified source touches
 only `src/lib/deviations/illustrious-18.ts` and nothing else.
 
+## [2026-08-20] Resolved: counting_systems stays a config file, not a DB table
+**What happened:** SPEC.md §8 listed `counting_systems` as "seeded
+config table matching §3 (or config file, TBD in CLAUDE.md)" —
+explicitly undecided. Setting up the real Postgres schema forced the
+decision. Chose config file: the existing `src/lib/counting-systems`
+module already *is* that config, every drill already reads from it,
+and CLAUDE.md rule #1 already frames "adding a system" as "adding a
+config entry, not new code paths" — a DB table would just be a second
+copy to keep in sync with the TypeScript one, for no benefit (nothing
+needs to query counting systems relationally; the app always wants
+"all of them" or "one by id," which the config array already serves
+fine). Every table that references a system (`user_settings`,
+`drill_sessions`, `play_sessions`) stores the config `id` as plain
+text, validated at the application layer, not a DB foreign key.
+**If this call is wrong:** promoting it to a real table later is an
+additive migration (`CREATE TABLE counting_systems`, seed it from the
+existing config array, then add real FK constraints) — doesn't require
+touching the columns that already store the id as text.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
