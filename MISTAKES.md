@@ -366,6 +366,39 @@ with a smoke test that manually depletes a shoe to 2 cards and forces
 a 3-seat round (which would have thrown pre-fix) to confirm it now
 recovers cleanly.
 
+## [2026-08-20] Real cause of Speed Drill's stall: React bails on a no-op setState, so the timer stopped rescheduling at max speed
+**What happened:** The shoe-exhaustion fix above was a real bug and a
+correct fix, but it wasn't *this* bug — the user reported the stall
+still happened, consistently, at the same point every time regardless
+of shoe/seat config. Actual cause: the timer effect rescheduled itself
+by depending on `intervalMs` state (`useEffect(..., [running,
+intervalMs])`), and each tick called
+`setIntervalMs(prev => Math.max(MIN_INTERVAL_MS, Math.round(prev *
+SPEEDUP_FACTOR)))`. Once the ramp reaches `MIN_INTERVAL_MS` (the
+floor), that expression evaluates to the *same* number every
+subsequent tick. React skips re-rendering when `setState` is called
+with a value equal (via `Object.is`) to the current state — so once
+pegged at the floor, the state genuinely never changes again, the
+effect's dependency never changes, and the effect never re-fires to
+schedule the next tick. Dealing stops dead, permanently, the moment
+the ramp bottoms out — which happens at a fixed round count
+regardless of shoe size, hence the "consistent" stall point the user
+noticed (it only *looked* shoe-related by coincidence).
+**Why it's a problem:** A `setTimeout` chain that reschedules itself
+by depending on a piece of React state that can plateau is fragile in
+a way that's easy to miss in code review — it works perfectly right up
+until the state stops changing, then stops silently with no error.
+**Fix / rule going forward:** Decoupled scheduling from React state
+entirely. The live interval now lives in a ref (`intervalRef`), and
+the timer schedules its own next tick imperatively from inside the
+`setTimeout` callback itself (a self-recursing `tick()` function),
+never relying on a state change to trigger a reschedule. `intervalMs`
+state still exists, but purely to drive the "X cards/sec" display
+text — it's no longer in the effect's dependency array at all. When a
+recurring timer's *scheduling* depends on a value that can stop
+changing, move the scheduling to an imperative ref-driven loop and
+keep React state for display only.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

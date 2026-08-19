@@ -34,6 +34,10 @@ export default function SpeedDrillPage() {
   const [revealCount, setRevealCount] = useState(false);
   const [running, setRunning] = useState(false);
   const [startIntervalMs, setStartIntervalMs] = useState(DEFAULT_START_INTERVAL_MS);
+  // The real, live pace lives in a ref, not state — see the effect
+  // below for why. `intervalMs` state exists only to drive the
+  // "X cards/sec" display text.
+  const intervalRef = useRef(DEFAULT_START_INTERVAL_MS);
   const [intervalMs, setIntervalMs] = useState(DEFAULT_START_INTERVAL_MS);
 
   // Keep the latest dealNext available to the timer's callback without
@@ -48,12 +52,37 @@ export default function SpeedDrillPage() {
 
   useEffect(() => {
     if (!running) return;
-    const id = setTimeout(() => {
-      dealNextRef.current();
-      setIntervalMs((prev) => Math.max(MIN_INTERVAL_MS, Math.round(prev * SPEEDUP_FACTOR)));
-    }, intervalMs);
-    return () => clearTimeout(id);
-  }, [running, intervalMs]);
+
+    // Self-scheduling via a ref, not "reschedule when intervalMs state
+    // changes": once the ramp reaches MIN_INTERVAL_MS, every further
+    // Math.max(MIN_INTERVAL_MS, ...) call produces the exact same
+    // number. Calling setState with a value equal to the current
+    // state is a no-op in React (no re-render), so an effect keyed on
+    // that state stops re-firing forever once the floor is hit —
+    // dealing would silently stop at max speed. Scheduling imperatively
+    // from the callback itself sidesteps that entirely. See MISTAKES.md.
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    function tick() {
+      timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        dealNextRef.current();
+        intervalRef.current = Math.max(
+          MIN_INTERVAL_MS,
+          Math.round(intervalRef.current * SPEEDUP_FACTOR),
+        );
+        setIntervalMs(intervalRef.current);
+        tick();
+      }, intervalRef.current);
+    }
+
+    tick();
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [running]);
 
   function stop() {
     setRunning(false);
@@ -65,6 +94,7 @@ export default function SpeedDrillPage() {
 
   function restart() {
     setRunning(false);
+    intervalRef.current = startIntervalMs;
     setIntervalMs(startIntervalMs);
     drill.resetSession();
   }
@@ -75,6 +105,7 @@ export default function SpeedDrillPage() {
     // reflects the current pace, not just where a future session
     // begins. Doesn't touch the shoe or count, so no need to stop the
     // auto-dealer first the way shoe/system config changes do.
+    intervalRef.current = nextStartIntervalMs;
     setIntervalMs(nextStartIntervalMs);
   }
 
