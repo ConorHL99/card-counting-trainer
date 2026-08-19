@@ -145,6 +145,27 @@ one exported function (`getBetUnits`) — swapping the numbers, or
 making the ramp itself user-configurable, touches only
 `src/lib/betting/bet-ramp.ts` and nothing else.
 
+## [2026-08-20] DealingTable gated on seat count instead of deal mode
+**What happened:** Running Count Drill and Speed Drill rendered
+`<DealingTable>` only when `seats.length > 0`, falling back to the old
+simple single-card view otherwise — including for a solo shoe-mode
+hand (real depleting shoe, zero simulated seats). SPEC.md §7.2's
+flashcard exemption was about deal *mode*, not seat count, but the
+implementation used seat count as a proxy for "is there a real hand,"
+which is wrong: a solo shoe-mode round is still a real hand.
+**Why it's a problem:** Violated the rule the component exists to
+enforce (CLAUDE.md rule #11) — the shared table silently didn't cover
+every shoe-mode case it was supposed to, and nothing caught it because
+the bug was about *which condition to render on*, not a crash or
+type error tsc/lint would flag. Caught by the user testing in a real
+browser, not by any check this session ran.
+**Fix / rule going forward:** Gate shared-component usage on the
+actual semantic condition named in the spec (`dealMode === "shoe"`),
+never on a proxy value that merely correlates with it (`seats.length`)
+— proxies break the moment the zero case is legitimate. Updated
+SPEC.md §7.2 to say this explicitly so it can't be misread the same
+way again.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

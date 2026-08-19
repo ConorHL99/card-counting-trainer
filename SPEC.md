@@ -181,7 +181,10 @@ Play Mode — never a per-page/per-feature card renderer.
   list.
 - Flashcard-mode drills (§4, single-card/reshuffle-after mode) don't
   use this component — they have no hand/table structure to lay out,
-  and keep their simpler single-card view.
+  and keep their simpler single-card view. **The exemption is about
+  deal mode, not seat count**: a shoe-mode round with zero simulated
+  seats is still a real hand and must use the shared table — don't
+  gate rendering on `seats.length > 0`, gate it on `dealMode`.
 
 ## 8. Data model (high level)
 - `users` — mirrors PocketID user ID, created on first login
