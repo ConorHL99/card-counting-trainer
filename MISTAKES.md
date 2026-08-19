@@ -466,6 +466,27 @@ additive migration (`CREATE TABLE counting_systems`, seed it from the
 existing config array, then add real FK constraints) — doesn't require
 touching the columns that already store the id as text.
 
+## [2026-08-20] Auth.js v5 JWT type augmentation targets @auth/core/jwt, not next-auth/jwt
+**What happened:** Extending the JWT payload with a custom `userId`
+field via `declare module "next-auth/jwt" { interface JWT {...} }`
+(the pattern shown in a lot of v4-era and even some v5 docs/examples)
+failed to compile — "Invalid module name in augmentation, module
+'next-auth/jwt' cannot be found" — even though `next-auth/jwt` is a
+real, resolvable subpath export. It's just a re-export barrel
+(`export * from "@auth/core/jwt"`) marked "not recommended" in v5;
+TypeScript's module augmentation needs to target the module that
+actually *defines* the interface, not one that re-exports it.
+**Fix / rule going forward:** Augment `@auth/core/jwt` directly:
+`declare module "@auth/core/jwt" { interface JWT { userId?: string } }`.
+Session augmentation (`declare module "next-auth"`) worked fine as
+documented — this is specific to the JWT type. Verified the whole auth
+flow end-to-end against the actual dev server afterward (not just
+`tsc`): `/api/auth/providers` lists the provider correctly,
+`/api/auth/session` returns null when signed out, and a real sign-in
+POST correctly attempts OIDC discovery and fails with `fetch failed`
+against the placeholder issuer URL — confirming the wiring itself is
+correct up to the point where real PocketID credentials are needed.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
