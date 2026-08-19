@@ -276,6 +276,36 @@ effect-driven animation must be *actually* cancellable from cleanup,
 not just gated — Strict Mode's double-mount in dev will find the gap
 if it isn't.
 
+## [2026-08-20] Card showed its face during the slide — omitted property wasn't preserved across separate animate() calls
+**What happened:** Even after the Strict Mode fix, the flip still
+looked wrong — but the actual symptom was different from what it first
+appeared to be: the card showed its FACE the whole way through the
+slide (not the back), then snapped to the back and immediately back to
+the face once it arrived. Root cause: phase 1's `animate()` call
+covered `x`/`y`/`opacity`/`rotate` but deliberately left `rotateY` out,
+assuming it would stay at the 180 value set by an earlier instant
+`animate()` call. On a raw DOM element driven by `useAnimate` (not a
+`<motion.*>` component with persistent tracked motion values), a
+property omitted from one `animate()` call isn't reliably held at
+whatever a *previous, separate* call set it to — it drifted back
+toward its unanimated default (0 = face-up) during phase 1. Phase 2
+then explicitly animated `rotateY: [180, 0]`, which forces a snap to
+180 first regardless of the actual current value — so the visible
+sequence was face (all through the slide) → snap to back → flip to
+face, i.e. the "quickly flips to the back and back round straight
+away" the user described.
+**Why it's a problem:** This is a subtler version of the same lesson
+as the Strict Mode entry above — assuming state persists implicitly
+across separate imperative `animate()` calls on a plain DOM node,
+rather than each call being a complete, self-contained description of
+every property it cares about.
+**Fix / rule going forward:** Every `animate()` call in a multi-phase
+sequence on a raw DOM element now explicitly restates *all* relevant
+properties (including the ones not changing in that phase), and phase
+2 animates to a single target (`rotateY: 0`, not `[180, 0]`) rather
+than forcing a from-value — removing any reliance on cross-call state
+persistence entirely.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

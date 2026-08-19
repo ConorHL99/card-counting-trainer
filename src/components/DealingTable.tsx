@@ -175,24 +175,36 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
     let activeAnimation: ReturnType<typeof animate> | null = null;
 
     async function run() {
-      // Instantly face-down (no transition) before anything else runs,
-      // so there's never a frame showing the front face pre-slide.
-      animate(el, { rotateY: 180 }, { duration: 0 });
+      // Instantly establish the starting state — every property that
+      // either phase touches, all at once. Each animate() call below
+      // also restates every property explicitly (not just the ones
+      // changing): calling animate() repeatedly on a raw DOM element
+      // (not a <motion.*> component) doesn't reliably preserve a
+      // property that a later call omits, so leaving rotateY out of
+      // phase 1 let it drift back toward 0 — the card showed its face
+      // during the slide, then phase 2's explicit [180, 0] forced a
+      // snap back to 180 before flipping, reading as two flips. See
+      // MISTAKES.md.
+      animate(el, { x: dx, y: dy, opacity: 0, rotate: -8, rotateY: 180 }, { duration: 0 });
 
-      // Phase 1: slide from the deck to the hand position. rotateY is
-      // untouched here — the card stays face-down for the entire
-      // slide, not partway flipping while still moving.
+      // Phase 1: slide from the deck to the hand position, face-down
+      // throughout — rotateY is explicitly held at 180, not omitted.
       activeAnimation = animate(
         el,
-        { x: [dx, 0], y: [dy, 0], opacity: [0, 1], rotate: [-8, 0] },
+        { x: 0, y: 0, opacity: 1, rotate: 0, rotateY: 180 },
         { duration: 0.24, ease: "easeOut" },
       );
       await activeAnimation;
       if (stopped) return;
 
-      // Phase 2: now stationary at its final position, flip once to
-      // reveal the face.
-      activeAnimation = animate(el, { rotateY: [180, 0] }, { duration: 0.28, ease: "easeInOut" });
+      // Phase 2: now stationary at its final position — x/y/opacity/
+      // rotate pinned at their resting values, only rotateY animates,
+      // from whatever it currently is (180) to 0.
+      activeAnimation = animate(
+        el,
+        { x: 0, y: 0, opacity: 1, rotate: 0, rotateY: 0 },
+        { duration: 0.28, ease: "easeInOut" },
+      );
       await activeAnimation;
     }
 
