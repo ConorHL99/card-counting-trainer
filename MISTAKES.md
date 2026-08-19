@@ -399,6 +399,31 @@ recurring timer's *scheduling* depends on a value that can stop
 changing, move the scheduling to an imperative ref-driven loop and
 keep React state for display only.
 
+## [2026-08-20] Design change: Speed Drill is a fixed pace, not an auto-ramp
+**What happened:** SPEC.md originally described Speed Drill as "timed,
+increasing card rate" — dealing speed automatically accelerating over
+the session. After adding a user-selectable "starting speed" on top of
+that ramp, the user reported (twice, in slightly different framings)
+that picking Slow/Normal still "got faster and faster" — the ramp was
+still there, the setting only controlled where it *began*. Asked
+directly whether the fix should be (a) each preset gets its own
+gentler ramp/lower ceiling, (b) speed becomes a fixed pace with no
+ramp at all, or (c) both as a toggle. User chose (b).
+**Why it's a problem (not really a mistake, a genuine spec change):**
+The original "increasing card rate" framing and the later "let the
+user pick a speed" request are in tension — auto-acceleration
+undermines a manually chosen pace. Building the starting-speed control
+without resolving that tension first meant it had to be revisited.
+**Fix / rule going forward:** Removed the acceleration entirely —
+`speedMs` is now a constant the timer reschedules at indefinitely, no
+`SPEEDUP_FACTOR`/`MIN_INTERVAL_MS` any more. Updated SPEC.md's drill
+list entry to describe the actual current behavior instead of leaving
+it saying "increasing card rate." When a new setting is requested for
+a mechanic that has an existing, opposing default behavior (here:
+"pick a speed" vs. "it speeds up automatically"), surface that tension
+and ask which one should win before implementing, rather than building
+the setting as a modifier on top of the behavior it conflicts with.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

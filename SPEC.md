@@ -100,7 +100,10 @@ consistent everywhere they apply:
 Drill types:
 - Running count drill (cards shown, track the count)
 - True count conversion drill (given running count + decks remaining)
-- Speed drill (timed, increasing card rate)
+- Speed drill (timed, user-selectable fixed pace — see MISTAKES.md;
+  originally spec'd as an automatically-increasing rate, changed after
+  user feedback that the auto-ramp fought against a chosen speed
+  setting rather than complementing it)
 - Deviation index drill (optional, Hi-Lo only initially — Illustrious 18 / Fab 4)
 - Bet-sizing drill (given true count, choose bet size)
 

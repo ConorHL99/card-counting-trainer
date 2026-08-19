@@ -8,9 +8,7 @@ import { DealingTable } from "@/components/DealingTable";
 import { PlayingCardView } from "@/components/PlayingCard";
 import { Term } from "@/components/Term";
 
-const DEFAULT_START_INTERVAL_MS = 2500;
-const MIN_INTERVAL_MS = 400;
-const SPEEDUP_FACTOR = 0.93;
+const DEFAULT_SPEED_MS = 2500;
 
 const SPEED_OPTIONS = [
   { label: "Slow", ms: 3500 },
@@ -33,12 +31,11 @@ export default function SpeedDrillPage() {
   const drill = useCardStreamDrill("hi-lo");
   const [revealCount, setRevealCount] = useState(false);
   const [running, setRunning] = useState(false);
-  const [startIntervalMs, setStartIntervalMs] = useState(DEFAULT_START_INTERVAL_MS);
-  // The real, live pace lives in a ref, not state — see the effect
-  // below for why. `intervalMs` state exists only to drive the
-  // "X cards/sec" display text.
-  const intervalRef = useRef(DEFAULT_START_INTERVAL_MS);
-  const [intervalMs, setIntervalMs] = useState(DEFAULT_START_INTERVAL_MS);
+  const [speedMs, setSpeedMs] = useState(DEFAULT_SPEED_MS);
+  // Mirrors speedMs into a ref the timer reads from, so changing speed
+  // while running takes effect on the very next tick without needing
+  // the effect below to depend on (and re-fire for) speedMs itself.
+  const speedRef = useRef(DEFAULT_SPEED_MS);
 
   // Keep the latest dealNext available to the timer's callback without
   // making it an effect dependency — dealNext's identity changes every
@@ -53,14 +50,15 @@ export default function SpeedDrillPage() {
   useEffect(() => {
     if (!running) return;
 
-    // Self-scheduling via a ref, not "reschedule when intervalMs state
-    // changes": once the ramp reaches MIN_INTERVAL_MS, every further
-    // Math.max(MIN_INTERVAL_MS, ...) call produces the exact same
-    // number. Calling setState with a value equal to the current
-    // state is a no-op in React (no re-render), so an effect keyed on
-    // that state stops re-firing forever once the floor is hit —
-    // dealing would silently stop at max speed. Scheduling imperatively
-    // from the callback itself sidesteps that entirely. See MISTAKES.md.
+    // Self-scheduling via a ref rather than a plain setInterval, so
+    // changing speedRef mid-flight (via handleSpeedChange) is picked
+    // up on the very next tick without needing to tear down and
+    // rebuild the timer. Fixed pace, deliberately — an earlier version
+    // auto-accelerated over time, which fought against a chosen speed
+    // setting instead of complementing it (and separately, ramping to
+    // a floor value could stop a state-driven reschedule dead — see
+    // MISTAKES.md). Kept the ref-based self-scheduling shape since
+    // it's still the more robust pattern even without the ramp.
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout>;
 
@@ -68,13 +66,8 @@ export default function SpeedDrillPage() {
       timeoutId = setTimeout(() => {
         if (cancelled) return;
         dealNextRef.current();
-        intervalRef.current = Math.max(
-          MIN_INTERVAL_MS,
-          Math.round(intervalRef.current * SPEEDUP_FACTOR),
-        );
-        setIntervalMs(intervalRef.current);
         tick();
-      }, intervalRef.current);
+      }, speedRef.current);
     }
 
     tick();
@@ -94,39 +87,35 @@ export default function SpeedDrillPage() {
 
   function restart() {
     setRunning(false);
-    intervalRef.current = startIntervalMs;
-    setIntervalMs(startIntervalMs);
     drill.resetSession();
   }
 
-  function handleStartSpeedChange(nextStartIntervalMs: number) {
-    setStartIntervalMs(nextStartIntervalMs);
-    // Applies immediately, whether running or stopped — "speed" always
-    // reflects the current pace, not just where a future session
-    // begins. Doesn't touch the shoe or count, so no need to stop the
-    // auto-dealer first the way shoe/system config changes do.
-    intervalRef.current = nextStartIntervalMs;
-    setIntervalMs(nextStartIntervalMs);
+  function handleSpeedChange(nextSpeedMs: number) {
+    setSpeedMs(nextSpeedMs);
+    // Applies immediately, whether running or stopped. Doesn't touch
+    // the shoe or count, so no need to stop the auto-dealer first the
+    // way shoe/system config changes do.
+    speedRef.current = nextSpeedMs;
   }
 
-  const cardsPerSecond = (1000 / intervalMs).toFixed(1);
+  const cardsPerSecond = (1000 / speedMs).toFixed(1);
 
   return (
     <main className="mx-auto w-full max-w-[60rem] flex-1 px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Speed Drill</h1>
       <p className="mt-1 text-sm text-ink-muted">
-        Cards deal themselves, faster over time — keep the <Term id="running-count" /> as long as
-        you can.
+        Cards deal themselves at a pace you choose — keep the <Term id="running-count" /> as long
+        as you can.
       </p>
 
       <div className="felt-panel mt-6 p-4">
-        <label htmlFor="start-speed" className="mb-1 block text-sm font-medium text-ink">
-          Starting speed
+        <label htmlFor="speed" className="mb-1 block text-sm font-medium text-ink">
+          Speed
         </label>
         <select
-          id="start-speed"
-          value={startIntervalMs}
-          onChange={(e) => handleStartSpeedChange(Number(e.target.value))}
+          id="speed"
+          value={speedMs}
+          onChange={(e) => handleSpeedChange(Number(e.target.value))}
           className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink sm:w-auto"
         >
           {SPEED_OPTIONS.map((option) => (
@@ -136,8 +125,7 @@ export default function SpeedDrillPage() {
           ))}
         </select>
         <p className="mt-1 text-xs text-ink-muted">
-          Sets the pace right now, and where each new round after a restart begins — it still
-          speeds up from there as you go.
+          A fixed pace — applies immediately, even mid-session.
         </p>
       </div>
 
