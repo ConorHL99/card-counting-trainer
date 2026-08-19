@@ -247,6 +247,35 @@ no-measurement" approximation is chosen for robustness, check that it
 still achieves the actual visual goal before committing to it — here
 it didn't, for any hand more than a few pixels from the deck.
 
+## [2026-08-20] Flip ran twice under React Strict Mode — cleanup set a flag but never stopped the animation
+**What happened:** After the previous flip fix, the user reported the
+card still visibly flipped twice — but this time with no identity
+glitch (always the correct card). Root cause: React Strict Mode (on by
+default in Next.js dev) mounts every component twice on initial
+render — mount, run effect cleanup, mount again, run effect again — to
+surface exactly this class of bug. `DealtCardView`'s `useLayoutEffect`
+cleanup only set a `stopped`/`cancelled` boolean, which gated whether
+phase 2 (the flip) would *start*, but never called `.stop()` on an
+*already-started* Framer Motion animation. So the first (throwaway)
+invocation's flip could partially play before Strict Mode's second
+(real) invocation started its own clean flip — two visible flips of
+the same, correctly-identified card.
+**Why it's a problem:** A boolean-flag guard is enough to stop a
+sequential `await` chain from *starting the next step*, but it does
+nothing to the WAAPI/Motion animation already running from a prior
+step — that keeps playing to completion (or until explicitly told to
+stop) regardless of the flag. Only production builds skip the
+double-invoke, so this class of bug is invisible in `next build` and
+only shows up against the dev server, which is what this project is
+verified against without a browser tool.
+**Fix / rule going forward:** Capture the return value of every
+`animate()` call (Framer Motion's `AnimationPlaybackControls`, which
+has `.stop()`) and call `.stop()` on the most recent one from the
+effect's cleanup, not just a boolean flag. Any imperative,
+effect-driven animation must be *actually* cancellable from cleanup,
+not just gated — Strict Mode's double-mount in dev will find the gap
+if it isn't.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

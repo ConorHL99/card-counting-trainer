@@ -75,7 +75,9 @@ export function DealingTable({ hands }: DealingTableProps) {
           <AnimatePresence>
             {seats.map((hand, i) => {
               const distanceFromCenter = Math.abs(i - mid);
-              const curveOffset = distanceFromCenter * 10;
+              // Negative: outer seats lift toward the dealer rather
+              // than dropping away from the table.
+              const curveOffset = -distanceFromCenter * 10;
               const curveScale = Math.max(0.92, 1 - distanceFromCenter * 0.03);
               return (
                 <motion.div
@@ -169,7 +171,8 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
       dy = deckRect.top + deckRect.height / 2 - (cardRect.top + cardRect.height / 2);
     }
 
-    let cancelled = false;
+    let stopped = false;
+    let activeAnimation: ReturnType<typeof animate> | null = null;
 
     async function run() {
       // Instantly face-down (no transition) before anything else runs,
@@ -179,21 +182,31 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
       // Phase 1: slide from the deck to the hand position. rotateY is
       // untouched here — the card stays face-down for the entire
       // slide, not partway flipping while still moving.
-      await animate(
+      activeAnimation = animate(
         el,
         { x: [dx, 0], y: [dy, 0], opacity: [0, 1], rotate: [-8, 0] },
         { duration: 0.24, ease: "easeOut" },
       );
-      if (cancelled) return;
+      await activeAnimation;
+      if (stopped) return;
 
       // Phase 2: now stationary at its final position, flip once to
       // reveal the face.
-      await animate(el, { rotateY: [180, 0] }, { duration: 0.28, ease: "easeInOut" });
+      activeAnimation = animate(el, { rotateY: [180, 0] }, { duration: 0.28, ease: "easeInOut" });
+      await activeAnimation;
     }
 
     run();
+
+    // React Strict Mode (dev only) mounts effects twice — the first
+    // invocation's cleanup must actually halt the in-flight animation
+    // via .stop(), not just set a flag, or its flip can partially play
+    // before the second (real) invocation starts its own, looking
+    // like the card flips twice even though its content never
+    // changed. See MISTAKES.md.
     return () => {
-      cancelled = true;
+      stopped = true;
+      activeAnimation?.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
