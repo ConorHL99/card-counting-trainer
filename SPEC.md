@@ -159,6 +159,30 @@ changes in practice — e.g. "harder" vs "easier," "realistic" vs
   e.g. a fixed "Off: simplified · On: realistic" style tag, so users
   learn to scan it quickly rather than read it fresh each time
 
+### 7.2 Table & dealing animation
+One shared table/dealing-animation component, used by every shoe-mode
+drill (Running Count, Speed, and any future shoe-mode drill) and by
+Play Mode — never a per-page/per-feature card renderer.
+
+- Cards animate from a deck position to their hand position when
+  dealt, rather than appearing instantly. The animation must stay
+  snappy enough not to slow down drill pace, especially under the
+  Speed Drill's increasing card rate.
+- Hands are laid out in realistic table positions around the felt —
+  a dealer position plus one position per active hand (the user's own
+  hand and each simulated seat, see §4.1) — not a flat list or grid of
+  cards.
+- Layout re-flows smoothly when simulated seats are added or removed
+  mid-session (§4.1) — no reload, no layout break, no snapping the
+  running count or in-progress deal.
+- Fully responsive per §7's hard requirement: at mobile widths the
+  table condenses/scrolls gracefully rather than clipping hands or
+  becoming unusable, while still reading as a table, not a bare card
+  list.
+- Flashcard-mode drills (§4, single-card/reshuffle-after mode) don't
+  use this component — they have no hand/table structure to lay out,
+  and keep their simpler single-card view.
+
 ## 8. Data model (high level)
 - `users` — mirrors PocketID user ID, created on first login
 - `user_settings` — default system, difficulty, toggle preferences

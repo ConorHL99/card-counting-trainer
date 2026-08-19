@@ -62,6 +62,13 @@ blackjack play mode. Full spec: `SPEC.md`.
     label/tooltip component for this everywhere; never write inline
     paragraph explanations, and never leave a toggle unexplained. Keep
     it terse enough that the UI stays sleek, not cluttered.
+11. **One shared table/dealing-animation component.** Every shoe-mode
+    drill and Play Mode render hands through the same table/animation
+    component (see `SPEC.md` §7.2) — never a per-page card renderer.
+    It must handle simulated seats being added/removed at any time
+    (re-flowing the table layout live, per rule 9) and stay fully
+    responsive at mobile widths (per rule 3). Flashcard-mode drills are
+    exempt — they keep their simpler single-card view.
 
 ## Data model conventions
 - `users` table mirrors PocketID's user ID — created on first login,

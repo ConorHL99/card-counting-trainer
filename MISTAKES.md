@@ -179,6 +179,24 @@ fixed in the other.
 **Fix / rule going forward:** One shoe engine module, imported
 everywhere cards are dealt.
 
+## Duplicating table rendering per page
+**What happens:** A shoe-mode drill or Play Mode grows its own
+one-off way of laying out hands/cards on screen — a flat list or grid
+of cards, cards appearing instantly instead of dealt, a different seat
+layout per page — instead of using one shared table/dealing-animation
+component.
+**Why it's a problem:** Every page ends up with subtly different
+table layout, animation, and responsive behavior; a fix or improvement
+made on one page (e.g. handling a seat being removed mid-deal without
+breaking layout) doesn't carry over to the others, and the app stops
+feeling like one consistent "table" product across drills and Play
+Mode.
+**Fix / rule going forward:** One shared table/dealing-animation
+component (see `SPEC.md` §7.2, `CLAUDE.md` rule #11), used by every
+shoe-mode drill and Play Mode. Flashcard-mode drills are the one
+exception — they keep their simpler single-card view since they have
+no hand/table structure to lay out.
+
 ## Inconsistent reveal-toggle UI
 **What happens:** Practice Drills and Play Mode each grow their own
 version of "show count" / "show correct action" controls with
