@@ -24,7 +24,7 @@ const DRILLS: DrillEntry[] = [
     href: "/drills/speed",
     title: "Speed Drill",
     description: "Timed, increasing card rate.",
-    available: false,
+    available: true,
   },
   {
     href: "/drills/deviations",
