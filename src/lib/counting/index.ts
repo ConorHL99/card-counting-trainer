@@ -3,6 +3,7 @@ export {
   computeRunningCount,
   computeDecksRemaining,
   computeTrueCount,
+  formatDecksRemaining,
 } from "./count";
 
 export { generateTrueCountScenario } from "./scenario";

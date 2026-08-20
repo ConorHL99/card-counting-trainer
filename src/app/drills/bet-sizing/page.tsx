@@ -67,7 +67,9 @@ function BetSizingDrillPageInner() {
     <main className="mx-auto w-full max-w-[45rem] flex-1 px-4 py-8 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight text-ink">Bet-Sizing Drill</h1>
       <p className="mt-1 text-sm text-ink-muted">
-        Given a <Term id="true-count" />, choose the correct bet size from the ramp below.
+        Given a <Term id="true-count" />, choose the correct bet size — from memory. Turn on
+        &ldquo;Reveal correct action&rdquo; to see the ramp itself, either before you start
+        learning it or to check an answer.
       </p>
 
       <section className="felt-panel mt-6 flex flex-col gap-4 p-4">
@@ -110,22 +112,35 @@ function BetSizingDrillPageInner() {
           label="Reveal correct action"
           checked={revealAnswer}
           onChange={setRevealAnswer}
-          offHint="hidden — test yourself"
-          onHint="always visible"
+          offHint="hidden — test yourself, no ramp shown either"
+          onHint="answer + bet ramp both shown"
         />
       </section>
 
-      <section className="felt-panel mt-6 p-4">
-        <p className="text-xs font-medium text-ink-muted">Bet ramp (reference)</p>
-        <div className="mt-2 flex flex-wrap gap-2 text-xs text-ink-muted">
-          {BET_RAMP.map((step, i) => (
-            <span key={i} className="rounded-card border border-felt-line px-2 py-1">
-              TC {step.minTrueCount === -Infinity ? "≤ 1" : `≥ ${step.minTrueCount}`}: {step.units}
-              x
-            </span>
-          ))}
-        </div>
-      </section>
+      {revealAnswer && (
+        <section className="felt-panel mt-6 p-4">
+          <p className="text-xs font-medium text-ink-muted">
+            Bet ramp — matching row for this scenario highlighted
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            {BET_RAMP.map((step, i) => {
+              const applies = getBetUnits(scenario.trueCount) === step.units;
+              return (
+                <span
+                  key={i}
+                  className={`rounded-card border px-2 py-1 ${
+                    applies
+                      ? "border-gold-500 bg-gold-500/20 font-semibold text-gold-300"
+                      : "border-felt-line text-ink-muted"
+                  }`}
+                >
+                  TC {step.minTrueCount === -Infinity ? "≤ 1" : `≥ ${step.minTrueCount}`}: {step.units}x
+                </span>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="felt-panel mt-6 p-4 text-center">
         <p className="text-xs text-ink-muted">

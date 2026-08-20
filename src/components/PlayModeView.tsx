@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePlayMode } from "@/hooks/usePlayMode";
 import { useInitialSystemId } from "@/hooks/useInitialSystemId";
+import { formatDecksRemaining } from "@/lib/counting";
 import { breakdownToChips } from "@/lib/chips";
 import { DrillConfigPanel } from "@/components/DrillConfigPanel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -108,7 +109,7 @@ export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: Pla
       <section className="felt-panel mt-6 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
           <span>
-            <Term id="decks-remaining">Decks remaining</Term>: {play.decksRemaining.toFixed(1)} (
+            <Term id="decks-remaining">Decks remaining</Term>: {formatDecksRemaining(play.decksRemaining)} (
             {play.shoeStats.remaining}/{play.shoeStats.size} cards)
           </span>
           {revealCount && (

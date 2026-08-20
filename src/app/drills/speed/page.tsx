@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useCardStreamDrill } from "@/hooks/useCardStreamDrill";
 import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
 import { useInitialSystemId } from "@/hooks/useInitialSystemId";
+import { formatDecksRemaining } from "@/lib/counting";
 import { DrillConfigPanel } from "@/components/DrillConfigPanel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DealingTable } from "@/components/DealingTable";
@@ -178,7 +179,7 @@ function SpeedDrillPageInner() {
       <section className="felt-panel mt-6 p-4">
         {drill.dealMode === "shoe" && (
           <p className="mb-3 text-xs text-ink-muted">
-            <Term id="decks-remaining">Decks remaining</Term>: {drill.decksRemaining.toFixed(1)} (
+            <Term id="decks-remaining">Decks remaining</Term>: {formatDecksRemaining(drill.decksRemaining)} (
             {drill.shoeStats.remaining}/{drill.shoeStats.size} cards)
           </p>
         )}

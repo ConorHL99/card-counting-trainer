@@ -17,14 +17,15 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   "true-count": {
     term: "True Count",
-    formula: "Running Count ÷ Decks Remaining",
+    formula: "Running Count ÷ Decks Remaining, rounded to the nearest whole number",
     definition:
-      "The running count normalized per deck remaining in the shoe — makes the count comparable across different points in a shoe.",
+      "The running count normalized per deck remaining in the shoe — makes the count comparable across different points in a shoe. Rounded to the nearest whole number, matching real play: nothing you'd actually decide (bet size, a deviation) needs finer precision than that.",
   },
   "decks-remaining": {
     term: "Decks Remaining",
-    formula: "Cards Remaining ÷ 52",
-    definition: "How many decks' worth of cards are left to be dealt before the next shuffle.",
+    formula: "Cards Remaining ÷ 52, rounded to the nearest half deck",
+    definition:
+      "How many decks' worth of cards are left to be dealt before the next shuffle — rounded to the nearest half deck, since that's genuinely how it's estimated at a real table (by eye), not read off as an exact decimal.",
   },
   penetration: {
     term: "Penetration",

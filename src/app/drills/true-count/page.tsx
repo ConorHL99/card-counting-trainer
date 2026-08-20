@@ -1,12 +1,13 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { generateTrueCountScenario, type TrueCountScenario } from "@/lib/counting";
+import { generateTrueCountScenario, formatDecksRemaining, type TrueCountScenario } from "@/lib/counting";
 import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
 import { useInitialSystemId } from "@/hooks/useInitialSystemId";
 import { CountingSystemSelect } from "@/components/CountingSystemSelect";
 import { SettingToggle } from "@/components/SettingToggle";
 import { Term } from "@/components/Term";
+import { HowToCalculateCard } from "@/components/HowToCalculateCard";
 
 const DECK_OPTIONS = [1, 2, 4, 6, 8];
 
@@ -61,7 +62,7 @@ function TrueCountDrillPageInner() {
   function checkGuess() {
     const parsed = Number(guess);
     if (Number.isNaN(parsed) || guess.trim() === "") return;
-    const rounded = Math.round(parsed * 10) / 10;
+    const rounded = Math.round(parsed);
     const correct = rounded === scenario.trueCount;
     setFeedback({ correct, actual: scenario.trueCount });
     telemetry.recordCheck(correct);
@@ -76,6 +77,39 @@ function TrueCountDrillPageInner() {
         Given a <Term id="running-count" /> and <Term id="decks-remaining" />, convert to{" "}
         <Term id="true-count" />.
       </p>
+
+      <div className="mt-4">
+        <HowToCalculateCard>
+          <p>
+            <strong>Decks remaining is rounded to the nearest half deck</strong> — real counters
+            estimate this by eye (how much of the shoe/discard tray is left), not as an exact
+            decimal. You&rsquo;ll never see something like &ldquo;4.68 decks&rdquo; here, only
+            values like 4, 4.5, 5, and so on.
+          </p>
+          <p>
+            <strong>The shortcut:</strong> if decks remaining is a whole number, just divide
+            normally. If it&rsquo;s a half (like 4.5), double both numbers first to clear the
+            fraction, then divide — it&rsquo;s much easier to divide by a whole number.
+          </p>
+          <p>
+            <strong>Worked example:</strong> running count 6, decks remaining 4.5.
+            <br />
+            Double both: 12 ÷ 9 ≈ 1.3 → round to the nearest whole number → true count{" "}
+            <strong>1</strong>.
+          </p>
+          <p>
+            <strong>Round your final answer to the nearest whole number</strong> — that&rsquo;s
+            all the precision a true count ever needs. Every bet-sizing and deviation threshold in
+            this app is a whole number too, so a true count of 1.3 vs. 1.4 would never change what
+            you should actually do at the table.
+          </p>
+          <p>
+            Yes, this is a real calculation counters do continuously through a shoe — but always
+            this loosely, never with calculator precision. If you find yourself needing an exact
+            decimal to decide, you&rsquo;re doing more work than the game actually requires.
+          </p>
+        </HowToCalculateCard>
+      </div>
 
       <section className="felt-panel mt-6 flex flex-col gap-4 p-4">
         <div>
@@ -134,7 +168,7 @@ function TrueCountDrillPageInner() {
               <Term id="decks-remaining">Decks remaining</Term>
             </dt>
             <dd className="text-2xl font-semibold text-gold-400">
-              {scenario.decksRemaining.toFixed(1)}
+              {formatDecksRemaining(scenario.decksRemaining)}
             </dd>
           </div>
         </dl>
@@ -152,8 +186,8 @@ function TrueCountDrillPageInner() {
           <input
             id="guess"
             type="number"
-            step="0.1"
-            inputMode="decimal"
+            step="1"
+            inputMode="numeric"
             value={guess}
             onChange={(e) => setGuess(e.target.value)}
             className="w-24 rounded-card border border-felt-line bg-felt-900 px-2 py-1 text-sm text-ink"

@@ -859,6 +859,50 @@ be called same-tick from deal()/finishPeek(). Any future change that
 makes a currently-async-only path reachable synchronously needs the
 same check.
 
+## [2026-08-20] Design change: true count / decks remaining rounded to realistic precision (user-confirmed)
+**What happened:** User asked how they'd mentally divide a running
+count of 6 by 4.7 decks remaining, and whether that precision is even
+realistic — good catch. It wasn't: `computeDecksRemaining` returned an
+exact fraction (`cardsRemaining / 52`) and `computeTrueCount` rounded
+to one decimal, neither of which matches real play. A real counter
+estimates decks remaining by eye to roughly the nearest half deck, and
+nothing in the game — including this app's own bet ramp and every
+Illustrious 18 deviation threshold — is defined more precisely than a
+whole-number true count. Asked the user whether to fix the precision
+app-wide or just add explanatory help without changing it; they chose
+fixing the precision.
+**Fix:** `computeDecksRemaining` now rounds to the nearest half deck;
+`computeTrueCount` now rounds to the nearest whole number instead of
+one decimal. This is a global change (`src/lib/counting/count.ts`) —
+it affects the True Count Drill's generated scenarios and answer
+checking (input step changed from 0.1 to 1), the Bet-Sizing Drill
+(shares the same scenario generator), and Play Mode's live true count/
+suggested-bet/deviation-correctness computations. Added
+`formatDecksRemaining` so a whole-number deck count displays as "5"
+rather than "5.0". Added a new `HowToCalculateCard` component (a
+collapsible worked-example block, distinct from `<Term>`'s short
+glossary lookups) to the True Count Drill explaining the actual mental
+shortcut (round to the nearest half deck, double both numbers to clear
+a fraction before dividing, round the result to the nearest whole
+number) — reusable for the Theory pages' worked examples too.
+**Verified:** headless smoke test covering the rounding boundaries
+(including the `decksRemaining <= 0` fallback) and existing Play
+Mode/drill smoke-test coverage re-run; all passing systems (bet ramp,
+deviation thresholds) already used whole-number thresholds, so this
+change only made their inputs match more often, not less.
+
+## [2026-08-20] Bug: Bet-Sizing Drill's "reference" ramp gave away the answer
+**What happened:** User pointed out that the bet ramp reference panel
+was shown unconditionally, right next to the current scenario's true
+count — since the ramp IS the exact lookup table, showing both
+together let you read off the correct answer without any real
+recall, defeating the point of a "test yourself" drill.
+**Fix:** Moved the ramp reference behind the existing "Reveal correct
+action" toggle (the same reveal-toggle pattern already used for the
+answer itself, SPEC.md §7.1) — off by default, and when shown, the row
+matching the current scenario is highlighted for learning purposes
+rather than just being a passive lookup during testing.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
