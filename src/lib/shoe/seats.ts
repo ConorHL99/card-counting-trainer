@@ -3,7 +3,10 @@ import type { Shoe } from "./shoe";
 import { getBasicStrategyAction } from "./basic-strategy";
 import { evaluateHand } from "./hand";
 
-const MAX_SPLIT_HANDS = 4;
+/** Exported so Play Mode's own interactive split logic uses the exact
+ * same cap as the simulated-seat engine, rather than a second
+ * hardcoded "4" that could drift out of sync with this one. */
+export const MAX_SPLIT_HANDS = 4;
 const IMPERFECT_ERROR_RATE = 0.15;
 
 export interface SeatHandResult {

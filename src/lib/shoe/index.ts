@@ -14,8 +14,8 @@ export { Shoe } from "./shoe";
 export { evaluateHand } from "./hand";
 export type { HandValue } from "./hand";
 
-export { getBasicStrategyAction } from "./basic-strategy";
-export type { StrategyOptions } from "./basic-strategy";
+export { getBasicStrategyAction, rankBucket } from "./basic-strategy";
+export type { StrategyOptions, DealerBucket } from "./basic-strategy";
 
-export { SeatManager, playSimulatedSeatHand } from "./seats";
+export { SeatManager, playSimulatedSeatHand, MAX_SPLIT_HANDS } from "./seats";
 export type { SeatHandResult } from "./seats";

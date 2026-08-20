@@ -12,7 +12,7 @@ import {
 import { AnimatePresence, motion, useAnimate } from "motion/react";
 import { PlayingCardView } from "@/components/PlayingCard";
 import { CardBackView } from "@/components/CardBack";
-import type { DealtCard, TableHand } from "@/hooks/useCardStreamDrill";
+import type { DealtCard, TableHand } from "@/lib/table/types";
 
 interface DealingTableProps {
   hands: TableHand[];
@@ -168,6 +168,11 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
   const deckRef = useContext(DeckAnchorContext);
   const [scope, animate] = useAnimate<HTMLDivElement>();
   const [revealed, setRevealed] = useState(false);
+  // Tracks the PREVIOUS faceDown value across renders so the reveal
+  // effect below can detect a true->false transition specifically,
+  // not just "faceDown is currently false" (which is also true for
+  // every ordinary card that was never hidden to begin with).
+  const wasFaceDownRef = useRef(dealt.faceDown ?? false);
 
   useLayoutEffect(() => {
     const el = scope.current;
@@ -205,6 +210,11 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
       await activeAnimation;
       if (stopped) return;
 
+      // A face-down card (Play Mode's dealer hole card) stays a back
+      // after sliding in — no flip yet. It's revealed later, in place,
+      // by the effect below when its `faceDown` prop actually changes.
+      if (dealt.faceDown) return;
+
       // Phase 2: flip in place — squish, swap content while invisible,
       // unsquish.
       activeAnimation = animate(el, { scaleX: [1, 0] }, { duration: 0.14, ease: "easeIn" });
@@ -230,6 +240,41 @@ function DealtCardView({ dealt }: { dealt: DealtCard }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reveal-in-place: fires only on a genuine faceDown true -> false
+  // transition on this same card (the dealer's hole card being shown),
+  // never on mount — see wasFaceDownRef above. Replays just the flip,
+  // not the deck-to-hand slide, since the card is already on the
+  // table.
+  useLayoutEffect(() => {
+    const wasFaceDown = wasFaceDownRef.current;
+    wasFaceDownRef.current = dealt.faceDown ?? false;
+    if (!wasFaceDown || dealt.faceDown) return;
+
+    const el = scope.current;
+    if (!el) return;
+
+    let stopped = false;
+    let activeAnimation: ReturnType<typeof animate> | null = null;
+
+    async function run() {
+      activeAnimation = animate(el!, { scaleX: [1, 0] }, { duration: 0.14, ease: "easeIn" });
+      await activeAnimation;
+      if (stopped) return;
+
+      setRevealed(true);
+
+      activeAnimation = animate(el!, { scaleX: [0, 1] }, { duration: 0.14, ease: "easeOut" });
+      await activeAnimation;
+    }
+
+    run();
+
+    return () => {
+      stopped = true;
+      activeAnimation?.stop();
+    };
+  }, [dealt.faceDown, animate, scope]);
 
   return (
     <motion.div exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.12 }}>

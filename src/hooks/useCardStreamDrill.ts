@@ -4,40 +4,23 @@ import { useMemo, useRef, useState } from "react";
 import { getCountingSystem } from "@/lib/counting-systems";
 import { computeRunningCount, computeDecksRemaining } from "@/lib/counting";
 import { Shoe, playSimulatedSeatHand, type Card, type SeatSkill, type DealMode } from "@/lib/shoe";
+import { wrapCard, type DealtCard, type TableHand } from "@/lib/table/types";
 
 export interface DrillSeat {
   id: string;
   skill: SeatSkill;
 }
 
-/** A dealt card with a stable per-instance id, separate from
- * rank/suit — needed so the DealingTable (SPEC.md §7.2) can key each
- * card for animation without misidentifying duplicate rank/suit cards
- * from a multi-deck shoe, and without restarting an in-flight
- * animation when unrelated state changes trigger a re-render. */
-export interface DealtCard {
-  id: string;
-  card: Card;
-}
-
-/** One table position's cards for the most recent round — the dealer,
- * the user's own hand, and one entry per active simulated seat (or
- * just the lone drawn card in flashcard mode, which has no hand
- * structure at all). */
-export interface TableHand {
-  id: string;
-  label: string;
-  cards: DealtCard[];
-}
+// Re-exported for existing importers (DealingTable.tsx originally
+// sourced these from here) — the actual definitions now live in
+// src/lib/table/types.ts so Play Mode's usePlayMode hook can use them
+// too without importing a drill-specific hook.
+export type { DealtCard, TableHand };
 
 const MAX_SEATS = 6;
 
 function createShoe(dealMode: DealMode, deckCount: number, penetration: number): Shoe {
   return new Shoe({ dealMode, deckCount, penetration });
-}
-
-function wrapCard(card: Card): DealtCard {
-  return { id: crypto.randomUUID(), card };
 }
 
 /**
@@ -170,7 +153,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
       return {
         id: seat.id,
         label: `Seat ${i + 1}`,
-        cards: results.flatMap((hand) => hand.cards).map(wrapCard),
+        cards: results.flatMap((hand) => hand.cards).map((card) => wrapCard(card)),
       };
     });
     return [

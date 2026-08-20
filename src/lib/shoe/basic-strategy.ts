@@ -9,7 +9,7 @@ import { evaluateHand } from "./hand";
  * tag values / balanced-count logic, not basic strategy).
  */
 
-type DealerBucket = "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "A";
+export type DealerBucket = "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "A";
 type ActionRow = Record<DealerBucket, Action>;
 
 const DEALER_BUCKETS: readonly DealerBucket[] = [
@@ -25,7 +25,12 @@ const DEALER_BUCKETS: readonly DealerBucket[] = [
   "A",
 ];
 
-function dealerBucket(rank: CardRank): DealerBucket {
+/** Collapses J/Q/K into "10" — despite the name, used for both the
+ * dealer's up-card AND player-card ranks anywhere a rank needs to
+ * match a strategy-chart column (e.g. Play Mode's deviation lookup
+ * comparing a live pair against a DeviationRule's representative
+ * pair). Exported for that reuse rather than re-implemented. */
+export function rankBucket(rank: CardRank): DealerBucket {
   if (rank === "J" || rank === "Q" || rank === "K") return "10";
   return rank as DealerBucket;
 }
@@ -154,14 +159,14 @@ export function getBasicStrategyAction(
   dealerUpCard: Card,
   options: StrategyOptions,
 ): Action {
-  const dealer = dealerBucket(dealerUpCard.rank);
+  const dealer = rankBucket(dealerUpCard.rank);
 
   if (
     options.canSplit &&
     playerCards.length === 2 &&
     playerCards[0].rank === playerCards[1].rank
   ) {
-    const pairBucket = dealerBucket(playerCards[0].rank);
+    const pairBucket = rankBucket(playerCards[0].rank);
     if (PAIR_CHART[pairBucket][dealer] === "split") return "split";
   }
 
