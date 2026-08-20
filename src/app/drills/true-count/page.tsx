@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { generateTrueCountScenario, type TrueCountScenario } from "@/lib/counting";
+import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
 import { CountingSystemSelect } from "@/components/CountingSystemSelect";
 import { SettingToggle } from "@/components/SettingToggle";
 import { Term } from "@/components/Term";
@@ -17,6 +18,7 @@ export default function TrueCountDrillPage() {
   );
   const [guess, setGuess] = useState("");
   const [feedback, setFeedback] = useState<null | { correct: boolean; actual: number }>(null);
+  const telemetry = useDrillTelemetry({ drillType: "true-count", systemId, mode: null });
 
   function newScenario(nextSystemId: string = systemId, nextDeckCount: number = deckCount) {
     setScenario(generateTrueCountScenario(nextSystemId, nextDeckCount));
@@ -39,11 +41,20 @@ export default function TrueCountDrillPage() {
     newScenario(systemId, next);
   }
 
+  // A system or deck-count change starts a fresh drill session — each
+  // new scenario within the same config keeps accumulating into the
+  // same rolling session (see the schema comment on drillResults).
+  useEffect(() => {
+    telemetry.reset();
+  }, [systemId, deckCount, telemetry]);
+
   function checkGuess() {
     const parsed = Number(guess);
     if (Number.isNaN(parsed) || guess.trim() === "") return;
     const rounded = Math.round(parsed * 10) / 10;
-    setFeedback({ correct: rounded === scenario.trueCount, actual: scenario.trueCount });
+    const correct = rounded === scenario.trueCount;
+    setFeedback({ correct, actual: scenario.trueCount });
+    telemetry.recordCheck(correct);
   }
 
   return (

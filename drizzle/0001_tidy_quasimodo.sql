@@ -1,0 +1,1 @@
+ALTER TABLE "drill_results" ADD CONSTRAINT "drill_results_session_id_unique" UNIQUE("session_id");

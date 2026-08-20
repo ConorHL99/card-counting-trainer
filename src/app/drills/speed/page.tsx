@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useCardStreamDrill } from "@/hooks/useCardStreamDrill";
+import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
 import { DrillConfigPanel } from "@/components/DrillConfigPanel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DealingTable } from "@/components/DealingTable";
@@ -32,6 +33,19 @@ export default function SpeedDrillPage() {
   const [revealCount, setRevealCount] = useState(false);
   const [running, setRunning] = useState(false);
   const [speedMs, setSpeedMs] = useState(DEFAULT_SPEED_MS);
+  const telemetry = useDrillTelemetry({
+    drillType: "speed",
+    systemId: drill.systemId,
+    mode: drill.dealMode,
+  });
+
+  useEffect(() => {
+    telemetry.reset();
+  }, [drill.resetCount, telemetry]);
+
+  useEffect(() => {
+    if (drill.feedback) telemetry.recordCheck(drill.feedback.correct);
+  }, [drill.feedback, telemetry]);
   // Mirrors speedMs into a ref the timer reads from, so changing speed
   // while running takes effect on the very next tick without needing
   // the effect below to depend on (and re-fire for) speedMs itself.
@@ -44,7 +58,10 @@ export default function SpeedDrillPage() {
   // time instead of letting it run to completion.
   const dealNextRef = useRef(drill.dealNext);
   useEffect(() => {
-    dealNextRef.current = drill.dealNext;
+    dealNextRef.current = () => {
+      telemetry.recordDeal();
+      drill.dealNext();
+    };
   });
 
   useEffect(() => {

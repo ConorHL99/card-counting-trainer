@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { generateTrueCountScenario, type TrueCountScenario } from "@/lib/counting";
 import { BET_RAMP, getBetUnits } from "@/lib/betting";
+import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
 import { CountingSystemSelect } from "@/components/CountingSystemSelect";
 import { SettingToggle } from "@/components/SettingToggle";
 import { Term } from "@/components/Term";
@@ -19,6 +20,11 @@ export default function BetSizingDrillPage() {
   );
   const [selectedUnits, setSelectedUnits] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<null | { correct: boolean; actual: number }>(null);
+  const telemetry = useDrillTelemetry({ drillType: "bet-sizing", systemId, mode: null });
+
+  useEffect(() => {
+    telemetry.reset();
+  }, [systemId, deckCount, telemetry]);
 
   function newScenario(nextSystemId: string = systemId, nextDeckCount: number = deckCount) {
     setScenario(generateTrueCountScenario(nextSystemId, nextDeckCount));
@@ -42,7 +48,9 @@ export default function BetSizingDrillPage() {
   function checkGuess() {
     if (selectedUnits === null) return;
     const actual = getBetUnits(scenario.trueCount);
-    setFeedback({ correct: selectedUnits === actual, actual });
+    const correct = selectedUnits === actual;
+    setFeedback({ correct, actual });
+    telemetry.recordCheck(correct);
   }
 
   return (

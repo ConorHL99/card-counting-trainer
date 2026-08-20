@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCardStreamDrill } from "@/hooks/useCardStreamDrill";
+import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
 import { DrillConfigPanel } from "@/components/DrillConfigPanel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DealingTable } from "@/components/DealingTable";
@@ -11,6 +12,27 @@ import { Term } from "@/components/Term";
 export default function RunningCountDrillPage() {
   const drill = useCardStreamDrill("hi-lo");
   const [revealCount, setRevealCount] = useState(false);
+  const telemetry = useDrillTelemetry({
+    drillType: "running-count",
+    systemId: drill.systemId,
+    mode: drill.dealMode,
+  });
+
+  // A system/mode/deck/penetration change (drill.resetCount) starts a
+  // fresh drill session — see the schema comment on drillResults for
+  // why a "session" is upserted as one rollup row rather than appended.
+  useEffect(() => {
+    telemetry.reset();
+  }, [drill.resetCount, telemetry]);
+
+  useEffect(() => {
+    if (drill.feedback) telemetry.recordCheck(drill.feedback.correct);
+  }, [drill.feedback, telemetry]);
+
+  function handleDeal() {
+    telemetry.recordDeal();
+    drill.dealNext();
+  }
 
   return (
     <main className="mx-auto w-full max-w-[60rem] flex-1 px-4 py-8 sm:px-6">
@@ -74,7 +96,7 @@ export default function RunningCountDrillPage() {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={drill.dealNext}
+            onClick={handleDeal}
             className="rounded-card bg-gold-500 px-5 py-2 font-medium text-felt-950 hover:bg-gold-400"
           >
             Deal

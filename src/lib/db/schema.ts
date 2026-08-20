@@ -57,8 +57,9 @@ export const drillSessions = pgTable("drill_sessions", {
    * "bet-sizing" — a plain string, not a DB enum, so adding a new
    * drill type never needs a migration. */
   drillType: text("drill_type").notNull(),
-  /** "flashcard" | "shoe" — null for scenario-based drills (true
-   * count, bet sizing, deviations) that have no deal-mode concept. */
+  /** Mirrors `DealMode` from src/lib/shoe ("single-card" | "shoe") —
+   * null for scenario-based drills (true count, bet sizing,
+   * deviations) that have no deal-mode concept. */
   mode: text("mode"),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
@@ -66,8 +67,14 @@ export const drillSessions = pgTable("drill_sessions", {
 
 export const drillResults = pgTable("drill_results", {
   id: uuid("id").primaryKey().defaultRandom(),
+  /** One rollup row per session, kept continuously up to date as the
+   * user plays rather than written once at a defined "end" (none of
+   * the card-stream/scenario drills have an explicit end-of-session
+   * action — see MISTAKES.md). The unique constraint is what makes
+   * that an upsert instead of an ever-growing history of snapshots. */
   sessionId: uuid("session_id")
     .notNull()
+    .unique()
     .references(() => drillSessions.id, { onDelete: "cascade" }),
   accuracyPercent: real("accuracy_percent"),
   avgMsPerCard: integer("avg_ms_per_card"),

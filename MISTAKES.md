@@ -487,6 +487,79 @@ POST correctly attempts OIDC discovery and fails with `fetch failed`
 against the placeholder issuer URL — confirming the wiring itself is
 correct up to the point where real PocketID credentials are needed.
 
+## [2026-08-20] Real PocketID client secret was pasted into `.env.example` instead of `.env.local`
+**What happened:** When wiring up real PocketID credentials, the
+issuer/client ID/client secret were added to `.env.example` (tracked
+in git) rather than `.env.local` (gitignored). Caught before any
+commit — `git status`/`git diff` showed `.env.example` as modified
+with real-looking values in it, which is exactly the kind of thing to
+double-check before staging.
+**Why it's a problem:** `.env.example` exists specifically to be safe
+to commit (placeholders only); a real OIDC client secret committed to
+git history is hard to fully undo (rotating the PocketID client is the
+only real fix) even if a later commit removes it.
+**Fix / rule going forward:** Reverted `.env.example` to placeholders;
+real values only ever go in `.env.local`. Before staging any `.env*`
+file, diff it and confirm it still reads as a template, not real
+config — this applies generally any time a file that's supposed to be
+a safe-to-commit template gets edited.
+
+## [2026-08-20] Design call: drill_sessions/drill_results are upserted continuously, not written once "on completion"
+**What happened:** None of the four drills wired to persistence
+(Running Count, True Count, Speed, Bet-Sizing) have an explicit
+end-of-session action in the UI — they're open-ended practice loops
+you just stop clicking. Rather than inventing an artificial "End
+Session" button or trying to hook page-unload (unreliable, and not
+asked for), each drill session gets one `drill_sessions` row and one
+`drill_results` row, both upserted after every graded round (Check
+click). `drillResults.sessionId` got a new unique constraint
+specifically to make this an upsert instead of an ever-growing history
+of snapshots. `endedAt` is set to "now" on every write, so it always
+reflects the true end of the session by the time the user stops
+interacting — the last write before they leave *is* the completion
+write, there's just no single moment flagged as special.
+**Reasoning:** This is more robust than a real "on completion" event
+would be anyway (survives a browser crash/tab close with the most
+recent state intact) and requires no new UI. A session boundary is
+whatever invalidates the running count already (system switch, mode/
+deck/penetration change, explicit restart) — reused
+`useCardStreamDrill`'s existing reset points (added a `resetCount`
+counter it bumps) rather than inventing a second, parallel notion of
+"session" alongside the one CLAUDE.md rule #4 already defines.
+**If this call is wrong:** the upsert-vs-insert choice is isolated to
+`persistDrillProgress`'s `.onConflictDoUpdate` calls and the
+`drillResults.sessionId` unique constraint — switching to per-round
+history rows would mean dropping that constraint and removing the
+`onConflictDoUpdate`, nothing else changes.
+
+## [2026-08-20] Design call: signed-out users get fully working, non-persisted drills
+**What happened:** SPEC.md/CLAUDE.md never say whether practice drills
+require an account. Decided: never gate a drill on auth state, and
+never show a sign-in prompt from a drill page. `saveDrillProgress`
+checks `auth()` internally and silently no-ops when nobody's signed
+in — the client-side telemetry hook always calls it the same way,
+never branching on auth state itself.
+**Reasoning:** Consistent with CLAUDE.md rule #9's stance that
+simulated seats need no account — the app's core practice loop
+shouldn't require signing in either. Persistence is a bonus for
+signed-in users (history/stats later), not a gate.
+**If this call is wrong:** the no-op branch is one `if (!userId)
+return;` in `saveDrillProgress` (`src/lib/db/drill-actions.ts`) —
+swapping to "prompt sign-in" would touch only that function and the
+UI that calls it, not the telemetry-accumulation logic.
+
+## [2026-08-20] Fixed a stale `mode` value in the drill_sessions schema comment
+**What happened:** `schema.ts`'s comment on `drillSessions.mode` said
+the column holds `"flashcard" | "shoe"`, but the actual shared type
+(`DealMode` in `src/lib/shoe`) uses `"single-card" | "shoe"` —
+"flashcard" is only the UI label shown in `DrillConfigPanel`, never a
+value that exists in code. Caught immediately by `tsc` when wiring the
+persistence types to reuse `DealMode` instead of retyping the union.
+**Fix / rule going forward:** `DrillProgressInput.mode` is typed as
+`DealMode | null` (imported, not re-declared) so this can't drift
+again. Updated the schema comment to point at the actual type instead
+of restating it.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

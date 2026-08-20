@@ -68,6 +68,11 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
   const [guess, setGuess] = useState("");
   const [feedback, setFeedback] = useState<null | { correct: boolean; actual: number }>(null);
   const [pendingSystemId, setPendingSystemId] = useState<string | null>(null);
+  // Bumped on every event that invalidates the running count (system
+  // switch, mode/deck/penetration change, explicit resetSession) — a
+  // single signal callers can watch to know "this is a new drill
+  // session" without re-deriving it from a composite of config values.
+  const [resetCount, setResetCount] = useState(0);
 
   const system = getCountingSystem(systemId);
   const runningCount = useMemo(
@@ -85,6 +90,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
     setShuffleNotice(false);
     setFeedback(null);
     setGuess("");
+    setResetCount((n) => n + 1);
   }
 
   function handleSystemChange(nextId: string) {
@@ -105,6 +111,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
       setLastRoundHands([]);
       setFeedback(null);
       setGuess("");
+      setResetCount((n) => n + 1);
     }
     setPendingSystemId(null);
   }
@@ -235,6 +242,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
     setGuess,
     feedback,
     pendingSystemId,
+    resetCount,
     handleSystemChange,
     confirmSystemChange,
     cancelSystemChange,
