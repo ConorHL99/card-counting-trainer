@@ -134,7 +134,7 @@ export function PlayModeView({ initialSystemId, initialBankroll, signedIn }: Pla
         </div>
 
         {play.phase !== "betting" && (
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs text-ink-muted">Bankroll</p>
               <ChipStackView entries={breakdownToChips(play.bankroll)} size="sm" />
