@@ -112,6 +112,29 @@ Full blackjack hands, styled like a casino table (see §7). No dealer
 avatar/person shown — table, felt, cards, chips only. Supports
 simulated multi-player seats (see §4.1) for realistic card exposure.
 
+House rules (see MISTAKES.md for the reasoning): dealer stands on soft
+17, blackjack pays 3:2, double after split allowed, standard 4-hand
+re-split limit, split aces get one card each with no further action,
+dealer peeks for blackjack on an Ace/10 up-card before the player's
+turn (insurance offered first on Ace, fixed at half the original bet).
+The dealer's hole card is dealt face-down and excluded from the
+running/true count and every correctness check until it's actually
+revealed (peek-blackjack or the real dealer turn) — this is the one
+mechanic most worth double-checking by hand if Play Mode's stats ever
+look suspicious.
+
+Betting is chip-based (standard casino denominations), click-to-add to
+a betting circle. The player's chip stack is always an exact breakdown
+of their real bankroll; the dealer's chip tray is decorative (no real
+house bankroll exists anywhere in the schema). Bankroll persists
+across sessions via the last point of the user's most recent
+`play_sessions.bankroll_trend`, not a dedicated column.
+
+A toggleable basic-strategy reference card (plain chart, not counting-
+aware — a real printed card doesn't have a true count on it either) is
+available in a fixed corner, separate from the toggleable overlays
+below.
+
 Toggleable overlays (same reveal pattern as drills):
 - Running/true count display
 - Correctness notification per decision (hit/stand/split/double/

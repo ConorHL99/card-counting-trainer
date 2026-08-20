@@ -685,6 +685,143 @@ resolves itself automatically once Play Mode writes real
 `play_sessions` rows — the Stats page's per-system table would just
 need two more columns.
 
+## [2026-08-20] Play Mode house rules: decisions made without being asked, per your instruction
+**What happened:** SPEC.md §5.4 didn't spell out several standard
+blackjack rule details. Decided each as follows, reusing precedent
+already in the codebase wherever it existed rather than inventing new
+numbers:
+- **Double after split**: allowed. `basic-strategy.ts`'s own header
+  comment already documents "double after split allowed" as the
+  chart's assumption, and the simulated-seat engine's `canDouble`
+  check (`hand.cards.length === 2`) already permits it post-split —
+  this wasn't a new decision, just staying consistent with what was
+  already implemented and documented.
+- **Re-split limit**: reused `seats.ts`'s existing `MAX_SPLIT_HANDS =
+  4` (now exported) instead of a second hardcoded number for the
+  player's own interactive hand.
+- **Split aces**: exactly one card each, no further action to that
+  hand — identical to the seat engine's existing rule.
+- **Dealer peek**: on an Ace or 10-value up-card, the dealer's hole
+  card is checked for blackjack *before* the player's turn begins. If
+  blackjack, it resolves immediately (push if the player also has
+  blackjack, otherwise a loss) and the player never gets to act into a
+  hand that was already decided — the standard Vegas rule, and without
+  it a player could double/split into an inevitable dealer blackjack.
+- **Blackjack payout after a split**: `evaluateHand().isBlackjack` is
+  true for any two-card 21, including a post-split one, which is
+  correct for the shared engine's existing uses (drills/seats never
+  cared) but wrong for real payout math — a post-split 21 pays 1:1, not
+  3:2. Play Mode tracks `fromSplit` per hand and gates on
+  `!fromSplit` before trusting that flag for payout purposes.
+- **Insurance stake**: fixed at half the original bet (rounded to the
+  nearest dollar), not a separate amount picker — matches the standard
+  maximum and keeps the betting UI to one mechanism (click chips)
+  rather than two.
+- **Fractional payouts**: rounded to the nearest whole dollar (e.g. 3:2
+  on a $5 bet). Bankroll is a plain integer throughout; standard casino
+  denominations were kept as-is rather than inventing non-standard chip
+  values to avoid the rounding.
+**If any of these are wrong:** each is isolated — the peek is one
+function (`finishPeek` in `usePlayMode.ts`), the split-blackjack gate
+is one boolean expression in `resolveRound`, the insurance stake is
+one `Math.round(bet / 2)`, none of them ripple into the others.
+
+## [2026-08-20] Critical invariant: the dealer's hole card must not affect the count (or correctness) until revealed
+**What happened:** Explicitly flagged mid-task as something that would
+silently invalidate every Play Mode stat if gotten wrong. The hole
+card IS drawn from the shoe immediately at deal time (shoe depletion
+is always physically accurate), but it is deliberately NOT added to
+`visibleCardsSinceShuffle` — the one array every count/correctness
+computation reads from — until the exact moment it's actually revealed
+(dealer peek finding blackjack, or the real dealer turn). The reveal is
+a single atomic state update that flips the card's visual `faceDown`
+flag AND appends it to the count-visible array together, so the visual
+state and the count state can never drift apart into two separate
+"is it revealed" answers.
+**Why it's a problem (assumption to verify, not a caught bug):**
+Getting the timing wrong in either direction is invisible in normal
+play-testing — a hole card counted one action too early or too late
+produces a plausible-looking but wrong number, exactly the kind of bug
+that "every stat this mode produces would be silently invalid."
+**Fix / rule going forward:** Traced every `setVisibleCardsSinceShuffle`
+call site in `usePlayMode.ts` by hand to confirm the hole card is
+included in exactly one of two mutually-exclusive paths (the peek-
+blackjack early resolution, or the normal `beginDealerTurn`) and never
+both, and that every per-decision correctness check
+(`recordDecision`) runs before the state update for whatever card that
+decision itself is about to reveal. No automated test covers this
+directly — the project has no React component-level test runner
+installed, and adding one for this single hook felt like a bigger
+infrastructure decision than this task warranted. **This is the one
+piece of Play Mode most worth a human's own manual verification**:
+turn on "Reveal count," play a hand where the dealer shows an Ace or a
+10, and confirm the displayed count does NOT change when you act, only
+jumping once the dealer's hole card actually flips over.
+
+## [2026-08-20] Design call: Play Mode gets its own hook rather than reusing useCardStreamDrill
+**What happened:** A full round (insurance, dealer peek, multi-hand
+splits, real money) is structurally too different from
+useCardStreamDrill's "deal one round, check a guess" shape to share
+meaningfully. Wrote `usePlayMode.ts` as its own hook, reusing every
+underlying engine (Shoe, playSimulatedSeatHand, counting, basic
+strategy, deviations) exactly as built, but re-implementing the small
+amount of structural boilerplate useCardStreamDrill also has (seat
+array management, system-switch-confirm state) rather than extracting
+a shared hook out of already-shipped, tested drill code mid-way
+through an already-large feature.
+**If this call is wrong:** the duplicated pieces are small (seat
+add/remove/setSkill, ~15 lines; system-switch-confirm, ~15 lines) and
+isolated enough to extract into shared hooks later without touching
+either call site's behavior.
+
+## [2026-08-20] Design call: no schema migration for bankroll — reused play_sessions.bankroll_trend
+**What happened:** "Bankroll persists per user across sessions" could
+have meant adding a `bankroll` column to `users`. Instead, a new play
+session's starting bankroll is read from the LAST point of the user's
+most recent previous `play_sessions.bankroll_trend` array (default
+$1000 for a first-ever player) — `getStartingBankroll` in
+`play-persistence.ts`. No migration needed; the field already existed
+for exactly this purpose (SPEC.md §8's bankroll trend).
+**Reasoning:** `users` is documented (CLAUDE.md data model conventions)
+as an identity-mirror table only — "stats/history/settings" belong in
+other tables keyed off `users.id`. Bankroll is game state, not
+identity, and `play_sessions` already had a field that serves as an
+exact, auditable record of every bankroll value the account has ever
+had, which a bare `users.bankroll` column wouldn't provide on its own.
+**If this call is wrong:** adding a dedicated column later is additive
+— `getStartingBankroll` would just read from it instead, unchanged
+call site.
+
+## [2026-08-20] Design call: dealer's chip stack is decorative; seats stay visual-only in Play Mode too
+**What happened:** There's no real "house bankroll" anywhere in the
+schema, and the task explicitly required accuracy only for the
+player's own stack — `DealerChipTray` renders a fixed, non-numeric row
+of chips for visual symmetry, never tied to a real value. Simulated
+seats also get no payout tracking of their own in Play Mode, same as
+in the drills — CLAUDE.md rule #9 already rules out giving them
+persistent stats/accounts.
+**If wrong:** both are additive — a real house-edge simulation or
+seat-level win/loss tracking would be new code, not a change to
+existing behavior.
+
+## [2026-08-20] Design call: seat/config changes gated to the betting phase, not literally "any point"
+**What happened:** CLAUDE.md rule #9 says simulated seats are
+"addable/removable at any point in any mode." Play Mode's config panel
+(system/deck/penetration/seats) only renders during the betting phase
+— mid-round, there's no UI to add/remove a seat until the round
+resolves and betting reopens.
+**Reasoning:** A real blackjack table doesn't let you add a seat mid-
+hand either — "any point" for a turn-based round game naturally means
+"between hands," which is the granularity every other engine concept
+here already respects (a shoe never reshuffles mid-hand, a system
+switch is blocked mid-round for the same reason). Drills have no
+"hand in progress" concept at all, so rule #9's literal "any point"
+reads differently there than for a real turn-based round.
+**If this call is wrong:** the seat handlers (`addSeat`/`removeSeat`/
+`setSeatSkill`) themselves have no phase guard at all — only the page's
+decision to hide the config panel during a round restricts this, so
+exposing seat controls during other phases is a UI-only change.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

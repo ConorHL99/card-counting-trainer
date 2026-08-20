@@ -25,6 +25,16 @@ interface DrillConfigPanelProps {
   onSetSeatSkill: (id: string, imperfect: boolean) => void;
   revealCount: boolean;
   onRevealCountChange: (v: boolean) => void;
+  /** Play Mode is always shoe mode — there's no flashcard concept for
+   * a real blackjack round — so it hides the toggle entirely rather
+   * than showing a switch with only one meaningful position. Deck
+   * count/penetration/seats still render normally underneath. */
+  hideModeToggle?: boolean;
+  /** Play Mode shows its own single consolidated overlays panel
+   * (reveal count + its own counting-aware toggles together) that
+   * stays visible across every round phase, not just while this
+   * config panel itself is shown — see src/components/PlayModeView.tsx. */
+  hideRevealCount?: boolean;
 }
 
 /**
@@ -49,6 +59,8 @@ export function DrillConfigPanel({
   onSetSeatSkill,
   revealCount,
   onRevealCountChange,
+  hideModeToggle,
+  hideRevealCount,
 }: DrillConfigPanelProps) {
   return (
     <section className="felt-panel flex flex-col gap-4 p-4">
@@ -59,14 +71,16 @@ export function DrillConfigPanel({
         <CountingSystemSelect id="system-select" value={systemId} onChange={onSystemChange} />
       </div>
 
-      <SettingToggle
-        id="mode-toggle"
-        label="Shoe mode"
-        checked={dealMode === "shoe"}
-        onChange={onModeChange}
-        offHint="quick reshuffled single cards"
-        onHint="realistic depleting multi-deck shoe"
-      />
+      {!hideModeToggle && (
+        <SettingToggle
+          id="mode-toggle"
+          label="Shoe mode"
+          checked={dealMode === "shoe"}
+          onChange={onModeChange}
+          offHint="quick reshuffled single cards"
+          onHint="realistic depleting multi-deck shoe"
+        />
+      )}
 
       {dealMode === "shoe" && (
         <>
@@ -150,14 +164,16 @@ export function DrillConfigPanel({
         </>
       )}
 
-      <SettingToggle
-        id="reveal-count"
-        label="Reveal count"
-        checked={revealCount}
-        onChange={onRevealCountChange}
-        offHint="hidden — test yourself"
-        onHint="always visible"
-      />
+      {!hideRevealCount && (
+        <SettingToggle
+          id="reveal-count"
+          label="Reveal count"
+          checked={revealCount}
+          onChange={onRevealCountChange}
+          offHint="hidden — test yourself"
+          onHint="always visible"
+        />
+      )}
     </section>
   );
 }

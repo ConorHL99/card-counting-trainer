@@ -46,6 +46,21 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     definition:
       "A play that departs from basic strategy because the true count has crossed a threshold — e.g. standing on 16 vs 10 once the count is high enough that the deck favors it.",
   },
+  insurance: {
+    term: "Insurance",
+    definition:
+      "A side bet (up to half your original bet) offered when the dealer shows an Ace, paying 2:1 if the dealer has blackjack. A losing bet on average unless the true count is high enough that a disproportionate number of ten-value cards remain.",
+  },
+  surrender: {
+    term: "(Late) Surrender",
+    definition:
+      "Forfeiting a hand for half your bet back, before taking any other action — only available as your very first decision on your original two cards, never after a split.",
+  },
+  "betting-correlation": {
+    term: "Betting Correlation",
+    definition:
+      "How closely your actual bet sizes tracked the true count over a session — a high correlation means you consistently bet more when the count favored you, which is the whole point of counting for betting purposes.",
+  },
 };
 
 export type GlossaryKey = keyof typeof GLOSSARY;

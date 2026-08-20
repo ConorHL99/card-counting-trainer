@@ -4,6 +4,7 @@ import { auth, signIn, signOut } from "@/auth";
 const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/drills", label: "Practice Drills" },
+  { href: "/play", label: "Play Mode" },
   { href: "/stats", label: "Stats" },
   { href: "/settings", label: "Settings" },
 ];

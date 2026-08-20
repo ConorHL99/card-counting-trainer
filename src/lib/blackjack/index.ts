@@ -8,3 +8,5 @@ export type { HandOutcome, ResolvedHand } from "./round";
 
 export { buildStrategyChart } from "./strategy-chart";
 export type { StrategyChart, StrategyChartRow } from "./strategy-chart";
+
+export { pearsonCorrelation } from "./correlation";
