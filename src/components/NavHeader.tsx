@@ -3,6 +3,7 @@ import { auth, signIn, signOut } from "@/auth";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
+  { href: "/theory", label: "Theory" },
   { href: "/drills", label: "Practice Drills" },
   { href: "/play", label: "Play Mode" },
   { href: "/stats", label: "Stats" },

@@ -903,6 +903,40 @@ answer itself, SPEC.md §7.1) — off by default, and when shown, the row
 matching the current scenario is highlighted for learning purposes
 rather than just being a passive lookup during testing.
 
+## [2026-08-20] Built Theory (SPEC.md §5.2): 7 chaptered pages, reusing engine data throughout
+**What happened:** Built `/theory` as 7 static chapter routes (intro,
+counting systems, running count, true count, betting, basic strategy,
+deviations) plus an index, sharing one `TheoryChapterLayout` (chapter
+number, prev/next nav) and one `THEORY_CHAPTERS` registry
+(`src/lib/theory/chapters.ts`) for that nav — but each chapter's
+actual content is its own page file, not a single data-driven
+`[slug]` route.
+**Reasoning:** SPEC.md §5.2 asks for "per-system explainer pages"
+covering genuinely different kinds of content (a data table, a
+worked-example walkthrough, a bar chart, a full strategy grid, a set
+of example rule cards) — forcing that into one generic renderer keyed
+by slug would mean either a large content-description schema that's
+harder to write rich JSX/diagrams into, or a switch statement no
+cleaner than separate files. Static per-chapter files keep each
+chapter's diagram/example code colocated with its own prose, while the
+shared registry+layout still means adding an 8th chapter never means
+touching more than one new file plus one registry entry.
+**Reused rather than re-derived, per CLAUDE.md:** the Counting Systems
+chapter's tag-value table reads `COUNTING_SYSTEMS` directly; the
+Basic Strategy chapter renders the real `buildStrategyChart()` output
+through the same `StrategyChartTable` component Play Mode's strategy
+card uses (extracted from `StrategyCard.tsx` into its own file for
+this reuse); the Deviations chapter's example cards call
+`basicActionFor` against the real `DEVIATION_RULES`; the Betting
+chapter's chart reads `BET_RAMP` directly. Nothing in Theory hardcodes
+a number that exists in a config file elsewhere — if a system's tag
+values or the bet ramp ever change, these pages update automatically.
+**New shared component:** `HowToCalculateCard` (a collapsible worked-
+example block, first built for the True Count Drill's mental-math
+help) is reused in the True Count chapter for the identical
+explanation — one source of truth for that specific piece of guidance
+rather than two copies that could drift.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

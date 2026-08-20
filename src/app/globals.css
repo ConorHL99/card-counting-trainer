@@ -51,3 +51,48 @@ body {
   border: 1px solid var(--color-felt-line);
   border-radius: var(--radius-card);
 }
+
+/* Prose styling for Theory chapter bodies (SPEC.md §5.2) — bare HTML
+ * elements only, deliberately never combined with a conflicting
+ * Tailwind utility on the same tag, so the unlayered-CSS cascade
+ * gotcha already documented in MISTAKES.md can't recur here. */
+.theory-content h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.theory-content h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-gold-400);
+}
+.theory-content p {
+  color: var(--color-ink-muted);
+  line-height: 1.65;
+}
+.theory-content ul,
+.theory-content ol {
+  color: var(--color-ink-muted);
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  line-height: 1.5;
+}
+.theory-content ul {
+  list-style: disc;
+}
+.theory-content ol {
+  list-style: decimal;
+}
+.theory-content strong {
+  color: var(--color-ink);
+}
+.theory-content code {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  color: var(--color-gold-300);
+  font-size: 0.875em;
+}

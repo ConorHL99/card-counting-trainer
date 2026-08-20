@@ -81,8 +81,13 @@ Pick counting system + difficulty (switchable later), quick stats
 summary, resume last session.
 
 ### 5.2 Theory
-Per-system explainer pages: tag values, running count, true count
-conversion, betting spread, basic strategy deviations. Every technical
+A chaptered guide at `/theory` (introduction, counting systems, running
+count, true count conversion, betting spread, basic strategy,
+deviations), each chapter with worked examples/diagrams/formulas built
+from the same live data/engines the rest of the app uses (counting-
+system config, bet ramp, basic-strategy engine, deviation rule set) —
+see MISTAKES.md for why chapters are separate page files sharing one
+layout/registry rather than one data-driven template. Every technical
 term (true count, penetration, TC, EV, insurance correlation, etc.)
 uses a shared `<Term>` tooltip component pulling from one glossary
 dictionary — hover/tap shows formula + brief definition inline, no

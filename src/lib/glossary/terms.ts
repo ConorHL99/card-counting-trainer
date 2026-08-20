@@ -62,6 +62,16 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     definition:
       "How closely your actual bet sizes tracked the true count over a session — a high correlation means you consistently bet more when the count favored you, which is the whole point of counting for betting purposes.",
   },
+  ev: {
+    term: "Expected Value (EV)",
+    definition:
+      "The average result of a bet if you made it many, many times — negative EV means you lose money on average (basic strategy alone, or counting at a low/neutral count), positive EV means you win on average (counting at a high enough true count).",
+  },
+  "playing-efficiency": {
+    term: "Betting / Insurance Correlation",
+    definition:
+      "How well a counting system's tag values track the actual value of each card removed from the shoe for a given purpose (betting decisions, or the insurance side bet specifically) — closer to 1.0 is better. No system is best at everything; more complex systems (Wong Halves, Omega II) tend to edge out simpler ones (Hi-Lo, KO) at the cost of being harder to keep in your head.",
+  },
 };
 
 export type GlossaryKey = keyof typeof GLOSSARY;
