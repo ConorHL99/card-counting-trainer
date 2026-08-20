@@ -56,28 +56,32 @@ export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: Pla
         </p>
       )}
 
-      {play.phase === "betting" && (
-        <div className="mt-6">
-          <DrillConfigPanel
-            systemId={play.systemId}
-            onSystemChange={play.handleSystemChange}
-            dealMode="shoe"
-            onModeChange={() => {}}
-            hideModeToggle
-            hideRevealCount
-            deckCount={play.deckCount}
-            onDeckCountChange={play.onDeckCountChange}
-            penetration={play.penetration}
-            onPenetrationChange={play.onPenetrationChange}
-            seats={play.seats}
-            onAddSeat={play.addSeat}
-            onRemoveSeat={play.removeSeat}
-            onSetSeatSkill={play.setSeatSkill}
-            revealCount={revealCount}
-            onRevealCountChange={setRevealCount}
-          />
-        </div>
-      )}
+      <div className="mt-6">
+        <DrillConfigPanel
+          systemId={play.systemId}
+          onSystemChange={play.handleSystemChange}
+          dealMode="shoe"
+          onModeChange={() => {}}
+          hideModeToggle
+          hideRevealCount
+          // Always mounted (not just during betting) so its presence
+          // never shifts everything below it as a round starts/ends —
+          // system/deck/penetration are just disabled outside betting,
+          // while seats stay fully interactive either way (CLAUDE.md
+          // rule #9). See MISTAKES.md.
+          disableConfig={play.phase !== "betting"}
+          deckCount={play.deckCount}
+          onDeckCountChange={play.onDeckCountChange}
+          penetration={play.penetration}
+          onPenetrationChange={play.onPenetrationChange}
+          seats={play.seats}
+          onAddSeat={play.addSeat}
+          onRemoveSeat={play.removeSeat}
+          onSetSeatSkill={play.setSeatSkill}
+          revealCount={revealCount}
+          onRevealCountChange={setRevealCount}
+        />
+      </div>
 
       <section className="felt-panel mt-6 flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <SettingToggle
@@ -130,20 +134,36 @@ export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: Pla
           </p>
         )}
 
-        {play.phase === "resolved" && play.roundResults && <RoundResultBanner results={play.roundResults} />}
-
-        <DealerChipTray />
-
-        <div className="mt-3 flex min-h-24 items-center justify-center">
-          {play.tableHands.length === 0 ? (
-            <p className="text-sm text-ink-muted">Place a bet to begin.</p>
-          ) : (
-            <DealingTable hands={play.tableHands} />
+        {/* relative + absolute banner: an overlay, not a block that
+         * pushes the table (and everything below it) down every time a
+         * round resolves — see MISTAKES.md. */}
+        <div className="relative">
+          {play.phase === "resolved" && play.roundResults && (
+            <div className="absolute inset-x-0 top-0 z-10 flex justify-center">
+              <RoundResultBanner results={play.roundResults} />
+            </div>
           )}
+
+          <DealerChipTray />
+
+          <div className="mt-3 flex min-h-24 items-center justify-center">
+            {play.tableHands.length === 0 ? (
+              <p className="text-sm text-ink-muted">Place a bet to begin.</p>
+            ) : (
+              <DealingTable hands={play.tableHands} />
+            )}
+          </div>
         </div>
 
+        {/* One min-height wrapper for every phase's controls (betting
+         * chips, insurance prompt, action buttons, results) — these
+         * differ a lot in height, and without a shared floor the page
+         * would grow/shrink under the Deal/Next Hand button each round,
+         * making it hard to click without moving the mouse. See
+         * MISTAKES.md. */}
+        <div className="mt-4 min-h-[220px]">
         {play.phase !== "betting" && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs text-ink-muted">Bankroll</p>
               <ChipStackView entries={breakdownToChips(play.bankroll)} size="sm" />
@@ -158,7 +178,7 @@ export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: Pla
         )}
 
         {play.phase === "betting" && (
-          <div className="mt-4">
+          <div>
             <BettingRack
               bankroll={play.bankroll}
               currentBet={play.currentBet}
@@ -183,7 +203,7 @@ export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: Pla
         )}
 
         {play.phase === "insurance" && (
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm text-ink">
               Dealer shows an Ace — <Term id="insurance">Insurance</Term> for ${play.insuranceOffer}?
             </p>
@@ -205,7 +225,7 @@ export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: Pla
         )}
 
         {play.phase === "player-turn" && (
-          <div className="mt-4">
+          <div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={play.hit} className="rounded-card bg-gold-500 px-4 py-2 text-sm font-medium text-felt-950 hover:bg-gold-400">
                 Hit
@@ -258,7 +278,7 @@ export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: Pla
         )}
 
         {play.phase === "resolved" && play.roundResults && (
-          <div className="mt-4">
+          <div>
             <ul className="flex flex-col gap-1 text-sm">
               {play.roundResults.map((r) => {
                 const net = r.payout - r.bet;
@@ -281,6 +301,7 @@ export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: Pla
             </button>
           </div>
         )}
+        </div>
       </section>
 
       <ConfirmDialog

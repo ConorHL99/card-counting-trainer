@@ -937,6 +937,71 @@ help) is reused in the True Count chapter for the identical
 explanation — one source of truth for that specific piece of guidance
 rather than two copies that could drift.
 
+## [2026-08-20] Term tooltip got clipped near a scrollable container's edge
+**What happened:** The Counting Systems Theory chapter's table header
+uses `<Term id="balanced-count">` inside a column near the right edge
+of a table wrapped in `overflow-x-auto` (needed for the table itself
+to scroll on narrow screens). The tooltip popover was `position:
+absolute` relative to the Term's own trigger — and per the CSS spec,
+setting `overflow-x` to a non-visible value forces `overflow-y` to
+compute to `auto` too if it was `visible`, so the wrapping div clips
+in BOTH directions, cutting off any absolutely-positioned popover that
+extends past its bounds. This wasn't unique to that one page — any
+Term placed near the edge of any scrollable/overflow-clipped ancestor
+anywhere in the app had the same latent risk.
+**Fix / rule going forward:** `Term` now measures its trigger's real
+position via `getBoundingClientRect()` on open and renders the popover
+with `position: fixed` (clamped to stay within the viewport with an
+8px margin) instead of `absolute` — this escapes every ancestor's
+overflow clipping, since `fixed` positions relative to the viewport,
+not the nearest positioned ancestor. Closes on scroll rather than
+continuously re-tracking position, which is simpler and matches most
+tooltip UIs. Any future absolutely-positioned popover/tooltip in this
+app should default to this same measured-fixed-position pattern rather
+than plain `absolute`, since the clipping risk is generic to the
+technique, not to this one component.
+
+## [2026-08-20] Theory chapter paragraphs had no gap between them
+**What happened:** `.theory-content p` set line-height/color but never
+a margin — Tailwind's preflight zeroes the browser's default `<p>`
+margin, so adjacent paragraphs within the same section rendered with
+no visual gap at all, reading as one dense block of text.
+**Fix:** Added `.theory-content p + p` (and heading-to-paragraph/list
+variants) margin-top rules to `globals.css`. Content authoring in
+future chapters doesn't need to do anything differently — plain `<p>`
+tags now get the spacing automatically.
+
+## [2026-08-20] Design change: Play Mode's layout was shifting under the user's mouse every hand
+**What happened:** User feedback: clicking Deal, then later Next Hand,
+required re-aiming the mouse each time because the page layout kept
+moving. Root causes, in order of impact:
+1. `DrillConfigPanel` was only mounted during the betting phase —
+   every transition back to betting made it appear (pushing
+   everything below it down), and every Deal click made it disappear
+   again (pulling everything back up).
+2. `RoundResultBanner` (added earlier this session) was a normal block
+   element that pushed the table down whenever a round resolved.
+3. The phase-specific controls (BettingRack, insurance prompt, action
+   buttons, results) are genuinely different heights, so the "Deal"
+   and "Next Hand" buttons naturally land at different Y positions
+   with nothing accounting for that difference.
+**Fix:** (1) `DrillConfigPanel` gained a `disableConfig` prop — Play
+Mode now always mounts it and just disables the system/deck/
+penetration controls outside the betting phase (seats stay fully
+interactive regardless, per CLAUDE.md rule #9) — the panel's presence
+no longer toggles at all. (2) `RoundResultBanner` is now positioned as
+an absolute overlay on top of the table (inside a `relative` wrapper)
+instead of a block that adds height. (3) Wrapped the entire
+phase-specific controls region in one `min-h-[220px]` container so the
+shortest variants (insurance, results) don't collapse the space the
+tallest one (BettingRack) needs — this doesn't make every button's
+position identical (a hand with many cards or several split hands will
+still grow the table itself, which is unavoidable), but it removes the
+two dominant, entirely avoidable sources of shift.
+**If this call is wrong:** the `min-h-[220px]` figure is a guess sized
+to fit BettingRack's actual content — worth adjusting directly if any
+phase's content still doesn't fit without its own internal scrolling.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

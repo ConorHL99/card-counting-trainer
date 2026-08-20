@@ -14,19 +14,21 @@ interface CountingSystemSelectProps {
    * the True Count drill. Never hardcode a system id here — filter on
    * a config property instead (CLAUDE.md rule #1). */
   filter?: (system: CountingSystemConfig) => boolean;
+  disabled?: boolean;
 }
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function CountingSystemSelect({ id, value, onChange, filter }: CountingSystemSelectProps) {
+export function CountingSystemSelect({ id, value, onChange, filter, disabled }: CountingSystemSelectProps) {
   return (
     <select
       id={id}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink"
+      disabled={disabled}
+      className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink disabled:opacity-40"
     >
       {DIFFICULTY_TIERS.map((tier) => {
         const systems = listCountingSystemsByDifficulty(tier).filter(

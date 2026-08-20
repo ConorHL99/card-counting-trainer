@@ -35,6 +35,13 @@ interface DrillConfigPanelProps {
    * stays visible across every round phase, not just while this
    * config panel itself is shown — see src/components/PlayModeView.tsx. */
   hideRevealCount?: boolean;
+  /** Disables the system/deck/penetration controls without unmounting
+   * them — Play Mode passes this while a round is in progress instead
+   * of hiding the whole panel, so the panel's presence (and therefore
+   * everything below it) doesn't shift position every time a round
+   * starts/ends. Seats stay fully interactive regardless (CLAUDE.md
+   * rule #9 — addable/removable "at any point"). See MISTAKES.md. */
+  disableConfig?: boolean;
 }
 
 /**
@@ -61,6 +68,7 @@ export function DrillConfigPanel({
   onRevealCountChange,
   hideModeToggle,
   hideRevealCount,
+  disableConfig,
 }: DrillConfigPanelProps) {
   return (
     <section className="felt-panel flex flex-col gap-4 p-4">
@@ -68,7 +76,12 @@ export function DrillConfigPanel({
         <label htmlFor="system-select" className="mb-1 block text-sm font-medium text-ink">
           Counting system
         </label>
-        <CountingSystemSelect id="system-select" value={systemId} onChange={onSystemChange} />
+        <CountingSystemSelect
+          id="system-select"
+          value={systemId}
+          onChange={onSystemChange}
+          disabled={disableConfig}
+        />
       </div>
 
       {!hideModeToggle && (
@@ -93,7 +106,8 @@ export function DrillConfigPanel({
                 id="deck-count"
                 value={deckCount}
                 onChange={(e) => onDeckCountChange(Number(e.target.value))}
-                className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink"
+                disabled={disableConfig}
+                className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink disabled:opacity-40"
               >
                 {DECK_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -110,7 +124,8 @@ export function DrillConfigPanel({
                 id="penetration"
                 value={penetration}
                 onChange={(e) => onPenetrationChange(Number(e.target.value))}
-                className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink"
+                disabled={disableConfig}
+                className="w-full rounded-card border border-felt-line bg-felt-900 px-3 py-2 text-sm text-ink disabled:opacity-40"
               >
                 {PENETRATION_OPTIONS.map((p) => (
                   <option key={p} value={p}>

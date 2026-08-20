@@ -30,6 +30,12 @@ interface RoundResultBannerProps {
  * glance, per your feedback. Split rounds (multiple hands) fall back
  * to a net-based win/loss/push summary since there's no single
  * outcome to headline.
+ *
+ * Renders as a plain inline block — the caller (PlayModeView) is
+ * responsible for positioning it as an absolute overlay on top of the
+ * table rather than letting it push the table down, so it doesn't
+ * shift the position of anything below it (Deal/Next Hand etc.) every
+ * time a round resolves. See MISTAKES.md.
  */
 export function RoundResultBanner({ results }: RoundResultBannerProps) {
   if (results.length === 0) return null;
@@ -54,7 +60,7 @@ export function RoundResultBanner({ results }: RoundResultBannerProps) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.85 }}
         transition={{ type: "spring", stiffness: 320, damping: 22 }}
-        className={`mx-auto mb-4 flex w-fit flex-col items-center gap-0.5 rounded-card px-6 py-3 shadow-lg ${TONE_STYLES[tone]}`}
+        className={`flex w-fit flex-col items-center gap-0.5 rounded-card px-6 py-3 shadow-xl ${TONE_STYLES[tone]}`}
       >
         <span className="text-2xl font-extrabold tracking-wide sm:text-3xl">{text}</span>
         <span className="text-sm font-semibold opacity-90">{netLabel}</span>

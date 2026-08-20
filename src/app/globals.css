@@ -60,15 +60,27 @@ body {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-ink);
+  margin-top: 0.5rem;
 }
 .theory-content h3 {
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--color-gold-400);
+  margin-top: 0.5rem;
 }
 .theory-content p {
   color: var(--color-ink-muted);
   line-height: 1.65;
+}
+/* Adjacent paragraphs within the same section had no gap at all —
+ * Tailwind's preflight zeroes the browser default <p> margin, and
+ * nothing here replaced it. */
+.theory-content p + p,
+.theory-content h2 + p,
+.theory-content h3 + p,
+.theory-content p + ul,
+.theory-content p + ol {
+  margin-top: 0.75rem;
 }
 .theory-content ul,
 .theory-content ol {
