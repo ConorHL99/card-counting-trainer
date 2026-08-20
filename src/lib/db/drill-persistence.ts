@@ -12,6 +12,12 @@ export interface DrillProgressInput {
   startedAt: string;
   accuracyPercent: number | null;
   avgMsPerCard: number | null;
+  /** Accuracy on just the subset of rounds that were genuine deviation
+   * calls (SPEC.md §6) — only the Deviation Index Drill sets this;
+   * every other drill leaves it null. Distinct from accuracyPercent
+   * because roughly half of that drill's scenarios land under the
+   * index threshold (basic strategy is correct, not a deviation). */
+  deviationAccuracyPercent: number | null;
   longestStreak: number | null;
 }
 
@@ -43,6 +49,7 @@ export async function persistDrillProgress(userId: string, input: DrillProgressI
         sessionId: input.sessionId,
         accuracyPercent: input.accuracyPercent,
         avgMsPerCard: input.avgMsPerCard,
+        deviationAccuracyPercent: input.deviationAccuracyPercent,
         longestStreak: input.longestStreak,
       })
       .onConflictDoUpdate({
@@ -50,6 +57,7 @@ export async function persistDrillProgress(userId: string, input: DrillProgressI
         set: {
           accuracyPercent: input.accuracyPercent,
           avgMsPerCard: input.avgMsPerCard,
+          deviationAccuracyPercent: input.deviationAccuracyPercent,
           longestStreak: input.longestStreak,
         },
       });

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DEVIATION_RULES,
   correctActionFor,
   type DeviationRule,
 } from "@/lib/deviations";
 import type { Action } from "@/lib/shoe";
+import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
 import { CountingSystemSelect } from "@/components/CountingSystemSelect";
 import { SettingToggle } from "@/components/SettingToggle";
 import { PlayingCardView } from "@/components/PlayingCard";
@@ -39,6 +40,11 @@ export default function DeviationsDrillPage() {
   const [scenario, setScenario] = useState(() => generateScenario());
   const [selected, setSelected] = useState<Choice | null>(null);
   const [feedback, setFeedback] = useState<null | { correct: boolean; actual: Choice }>(null);
+  const telemetry = useDrillTelemetry({ drillType: "deviations", systemId, mode: null });
+
+  useEffect(() => {
+    telemetry.reset();
+  }, [systemId, telemetry]);
 
   function newScenario() {
     setScenario(generateScenario());
@@ -57,7 +63,9 @@ export default function DeviationsDrillPage() {
   function checkAnswer() {
     if (!selected) return;
     const actual = correctActionFor(scenario.rule, scenario.trueCount);
-    setFeedback({ correct: selected === actual, actual });
+    const correct = selected === actual;
+    setFeedback({ correct, actual });
+    telemetry.recordCheck(correct, { isDeviationCall: isDeviating });
   }
 
   const actual = correctActionFor(scenario.rule, scenario.trueCount);

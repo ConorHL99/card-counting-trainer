@@ -37,6 +37,11 @@ export function useDrillTelemetry(config: DrillTelemetryConfig) {
   const streakRef = useRef(0);
   const longestStreakRef = useRef(0);
   const dealTimestampsRef = useRef<number[]>([]);
+  // Only the Deviation Index Drill's rounds pass `isDeviationCall`;
+  // every other drill's totals here stay at 0, keeping
+  // deviationAccuracyPercent null for them (see drill-persistence.ts).
+  const deviationTotalRef = useRef(0);
+  const deviationCorrectRef = useRef(0);
 
   const reset = useCallback(() => {
     sessionIdRef.current = null;
@@ -46,6 +51,8 @@ export function useDrillTelemetry(config: DrillTelemetryConfig) {
     streakRef.current = 0;
     longestStreakRef.current = 0;
     dealTimestampsRef.current = [];
+    deviationTotalRef.current = 0;
+    deviationCorrectRef.current = 0;
   }, []);
 
   /** Call once per card/round dealt in shoe-mode drills, to derive
@@ -56,7 +63,7 @@ export function useDrillTelemetry(config: DrillTelemetryConfig) {
   }, []);
 
   const recordCheck = useCallback(
-    (correct: boolean) => {
+    (correct: boolean, opts?: { isDeviationCall?: boolean }) => {
       if (!sessionIdRef.current) {
         sessionIdRef.current = crypto.randomUUID();
         startedAtRef.current = new Date().toISOString();
@@ -68,6 +75,11 @@ export function useDrillTelemetry(config: DrillTelemetryConfig) {
         longestStreakRef.current = Math.max(longestStreakRef.current, streakRef.current);
       } else {
         streakRef.current = 0;
+      }
+
+      if (opts?.isDeviationCall) {
+        deviationTotalRef.current += 1;
+        if (correct) deviationCorrectRef.current += 1;
       }
 
       const timestamps = dealTimestampsRef.current;
@@ -86,6 +98,10 @@ export function useDrillTelemetry(config: DrillTelemetryConfig) {
         startedAt: startedAtRef.current!,
         accuracyPercent: Math.round((correctRef.current / totalRef.current) * 1000) / 10,
         avgMsPerCard,
+        deviationAccuracyPercent:
+          deviationTotalRef.current > 0
+            ? Math.round((deviationCorrectRef.current / deviationTotalRef.current) * 1000) / 10
+            : null,
         longestStreak: longestStreakRef.current,
       });
     },

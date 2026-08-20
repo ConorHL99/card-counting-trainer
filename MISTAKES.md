@@ -588,6 +588,30 @@ defaults as a built-in provider — check `checks` explicitly, since
 that's exactly the kind of security-relevant default that's easy to
 silently under-specify.
 
+## [2026-08-20] Design call: Deviation Index Drill splits accuracy into overall vs. deviation-call-only
+**What happened:** Wired the Deviation Index Drill into the same
+persistence path as the other four drills, but it's the first one to
+actually populate `drill_results.deviationAccuracyPercent` — the
+column existed since the original schema (SPEC.md §8) but nothing
+wrote to it yet. Extended `useDrillTelemetry`'s `recordCheck` to take
+an optional `{ isDeviationCall: boolean }` and track a second,
+separate correct/total tally alongside the existing overall one;
+`deviationAccuracyPercent` stays null for every drill that never
+passes that flag (Running Count, True Count, Speed, Bet-Sizing).
+**Reasoning:** Roughly half of this drill's generated scenarios land
+under the index threshold (basic strategy is already correct — not a
+deviation), so "overall accuracy" and "accuracy specifically on the
+harder deviation calls" are genuinely different numbers, exactly the
+distinction the schema comment on that column already described. A
+single shared `accuracyPercent` would have hidden a real signal (e.g.
+someone could be great at recognizing "no deviation here" but weak on
+the actual index numbers, and overall accuracy alone wouldn't show it).
+**If this call is wrong:** the second tally is fully isolated to
+`deviationTotalRef`/`deviationCorrectRef` in `useDrillTelemetry.ts` and
+the `isDeviationCall` opt-in — removing it just means every drill's
+`deviationAccuracyPercent` goes back to always-null, no schema change
+needed.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
