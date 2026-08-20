@@ -560,6 +560,34 @@ persistence types to reuse `DealMode` instead of retyping the union.
 again. Updated the schema comment to point at the actual type instead
 of restating it.
 
+## [2026-08-20] Real PocketID login failed: custom OIDC provider config silently dropped the `state` check
+**What happened:** With real PocketID credentials wired up, sign-in
+failed with Auth.js's generic "Try signing in with a different
+account" error page. The dev server log showed the real cause:
+`/api/auth/callback/pocketid?error=invalid_state&error_description=
+The+state+is+missing...+must+be+at+least+8+characters...`. Root cause:
+`node_modules/@auth/core/lib/utils/providers.js` defaults a plain
+`OIDCConfig` object's `checks` to `["pkce"]` only — `"state"` is not
+included unless explicitly listed. Auth.js's own built-in providers
+(Google, GitHub, etc.) hardcode `checks: ["pkce", "state"]` in their
+provider factories, so this default gap only shows up when hand-rolling
+a custom provider config the way `pocketId()` does here. PocketID's
+authorization server requires a `state` param with real entropy
+regardless of PKCE being used, and rejects the request (redirecting
+back to our callback with the error) when it's absent.
+**Why it's a problem:** This was invisible until a real OIDC issuer was
+available — the earlier end-to-end check (logged in a prior session's
+MISTAKES.md entry) only got as far as confirming OIDC discovery was
+attempted against a placeholder issuer, which never exercises the
+authorize-redirect's actual query parameters.
+**Fix / rule going forward:** Added `checks: ["pkce", "state"]`
+explicitly to the `pocketId()` provider config in `src/auth.ts`. When
+hand-writing a custom Auth.js provider config (as opposed to using one
+of the library's built-ins), don't assume it inherits the same
+defaults as a built-in provider — check `checks` explicitly, since
+that's exactly the kind of security-relevant default that's easy to
+silently under-specify.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

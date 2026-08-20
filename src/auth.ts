@@ -36,6 +36,14 @@ function pocketId(): OIDCConfig<Record<string, unknown>> {
     issuer: process.env.POCKETID_ISSUER,
     clientId: process.env.POCKETID_CLIENT_ID,
     clientSecret: process.env.POCKETID_CLIENT_SECRET,
+    // A custom OIDC provider config defaults to checks: ["pkce"] only
+    // (Auth.js's built-in providers hardcode "state" themselves, but a
+    // plain OIDCConfig object doesn't get that default — see
+    // node_modules/@auth/core/lib/utils/providers.js). PocketID's
+    // authorization server requires a `state` param with >= 8 chars of
+    // entropy regardless of PKCE, and errors with invalid_state
+    // without it. See MISTAKES.md.
+    checks: ["pkce", "state"],
   };
 }
 
