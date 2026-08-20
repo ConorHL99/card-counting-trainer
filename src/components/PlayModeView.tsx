@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { usePlayMode } from "@/hooks/usePlayMode";
+import { useInitialSystemId } from "@/hooks/useInitialSystemId";
 import { breakdownToChips } from "@/lib/chips";
 import { DrillConfigPanel } from "@/components/DrillConfigPanel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DealingTable } from "@/components/DealingTable";
 import { DealerChipTray } from "@/components/DealerChipTray";
+import { RoundResultBanner } from "@/components/RoundResultBanner";
 import { BettingRack } from "@/components/BettingRack";
 import { ChipStackView } from "@/components/ChipStack";
 import { StrategyCard } from "@/components/StrategyCard";
@@ -14,7 +16,10 @@ import { SettingToggle } from "@/components/SettingToggle";
 import { Term } from "@/components/Term";
 
 interface PlayModeViewProps {
-  initialSystemId: string;
+  /** The user's saved default system — overridden by `?system=` (set
+   * by the Dashboard's picker) when present, same precedence as every
+   * drill page. */
+  defaultSystemId: string;
   initialBankroll: number;
   signedIn: boolean;
 }
@@ -29,7 +34,8 @@ const ACTION_LABEL: Record<string, string> = {
   "no-insurance": "Decline insurance",
 };
 
-export function PlayModeView({ initialSystemId, initialBankroll, signedIn }: PlayModeViewProps) {
+export function PlayModeView({ defaultSystemId, initialBankroll, signedIn }: PlayModeViewProps) {
+  const initialSystemId = useInitialSystemId(defaultSystemId);
   const play = usePlayMode(initialSystemId, initialBankroll);
   const [revealCount, setRevealCount] = useState(false);
   const [showCorrectness, setShowCorrectness] = useState(false);
@@ -122,6 +128,8 @@ export function PlayModeView({ initialSystemId, initialBankroll, signedIn }: Pla
             Shoe reshuffled — running count reset to 0.
           </p>
         )}
+
+        {play.phase === "resolved" && play.roundResults && <RoundResultBanner results={play.roundResults} />}
 
         <DealerChipTray />
 
@@ -226,17 +234,26 @@ export function PlayModeView({ initialSystemId, initialBankroll, signedIn }: Pla
                 disabled={!play.activeHandOptions.canSurrender}
                 className="rounded-card bg-felt-700 px-4 py-2 text-sm font-medium text-ink hover:bg-felt-800 disabled:opacity-40"
               >
-                <Term id="surrender">Surrender</Term>
+                Surrender
               </button>
             </div>
-            {showCorrectness && play.lastActionFeedback && (
-              <p className={`mt-2 text-sm ${play.lastActionFeedback.correct ? "text-success" : "text-danger"}`}>
-                {play.lastActionFeedback.correct
-                  ? "Correct!"
-                  : `Counting-aware play was: ${ACTION_LABEL[play.lastActionFeedback.suggested] ?? play.lastActionFeedback.suggested}`}
-              </p>
-            )}
+            <p className="mt-2 text-xs text-ink-muted">
+              <Term id="surrender">What&rsquo;s surrender?</Term>
+            </p>
           </div>
+        )}
+
+        {showCorrectness && play.lastActionFeedback && (
+          <p className="mt-2 text-sm">
+            <span className={play.lastActionFeedback.correct ? "text-success" : "text-danger"}>
+              {play.lastActionFeedback.correct
+                ? "Correct!"
+                : `Counting-aware play was: ${ACTION_LABEL[play.lastActionFeedback.suggested] ?? play.lastActionFeedback.suggested}`}
+            </span>{" "}
+            <span className="text-ink-muted">
+              (your {ACTION_LABEL[play.lastActionFeedback.action] ?? play.lastActionFeedback.action})
+            </span>
+          </p>
         )}
 
         {play.phase === "resolved" && play.roundResults && (

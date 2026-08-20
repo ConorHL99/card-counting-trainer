@@ -40,6 +40,13 @@ export function DashboardPicker({ initialSystemId }: DashboardPickerProps) {
           </Link>
         ))}
       </div>
+
+      <Link
+        href={`/play?system=${systemId}`}
+        className="mt-2 block rounded-card border border-gold-500/50 bg-felt-900 px-3 py-2 text-center text-sm font-medium text-gold-400 transition-colors hover:border-gold-500 hover:bg-felt-800"
+      >
+        Play Mode — full blackjack hands
+      </Link>
     </section>
   );
 }

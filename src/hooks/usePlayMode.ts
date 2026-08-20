@@ -365,6 +365,33 @@ export function usePlayMode(initialSystemId: string, initialBankroll: number) {
       setPhase("dealing");
       finishPeek(dealerUp, dealerHole, [initialHand], 0);
     } else {
+      enterPlayerTurn(dealerUp, dealerHole, [initialHand]);
+    }
+  }
+
+  /** A natural (2-card, not-from-split) player blackjack is an
+   * automatic win the instant the dealer is confirmed not to also
+   * have one — real tables never make you "act" on an unbeatable
+   * hand. Auto-marks it done and runs the same advance/resolve path a
+   * manual Stand would, rather than requiring a click.
+   *
+   * Takes the dealer's cards explicitly rather than reading
+   * `dealerHand` state — this can fire SYNCHRONOUSLY from within
+   * deal()/finishPeek(), before that render's setDealerHand call has
+   * flushed, so reading the state closure here would see stale (or
+   * even empty, on a fresh deal) data. Every function this calls into
+   * (advanceToNextHandOrDealer, beginDealerTurn) threads the same
+   * explicit values through for the same reason. */
+  function enterPlayerTurn(dealerUp: Card, dealerHole: Card, hands: PlayerHandState[]) {
+    const hand = hands[0];
+    const isNaturalBlackjack =
+      hands.length === 1 && !hand.fromSplit && evaluateHand(rawCards(hand.cards)).isBlackjack;
+    if (isNaturalBlackjack) {
+      const doneHand: PlayerHandState = { ...hand, hasActed: true, done: true };
+      setPlayerHands([doneHand]);
+      setActiveHandIndex(0);
+      advanceToNextHandOrDealer(dealerUp, dealerHole, [doneHand]);
+    } else {
       setPhase("player-turn");
     }
   }
@@ -404,11 +431,20 @@ export function usePlayMode(initialSystemId: string, initialBankroll: number) {
       setVisibleCardsSinceShuffle((prev) => [...prev, dealerHole]);
       resolveRound([dealerUp, dealerHole], hands);
     } else {
-      setPhase("player-turn");
+      enterPlayerTurn(dealerUp, dealerHole, hands);
     }
   }
 
   // --- Player's turn ---
+
+  /** Safe to read `dealerHand` state here — every call site of this
+   * helper is a user-click handler (hit/stand/double/surrender/split),
+   * which only ever runs in a render where deal() has already fully
+   * flushed, unlike the same-tick auto-blackjack path (see
+   * enterPlayerTurn's comment above). */
+  function currentDealerCards(): [Card, Card] {
+    return [dealerHand[0].card, dealerHand[1].card];
+  }
 
   function recordDecision(action: Action) {
     if (!activeHand) return;
@@ -439,14 +475,14 @@ export function usePlayMode(initialSystemId: string, initialBankroll: number) {
     const done = value.total >= 21;
     const newHands = updateActiveHand({ ...activeHand, cards: newCards, hasActed: true, done });
 
-    if (done) advanceToNextHandOrDealer(newHands);
+    if (done) advanceToNextHandOrDealer(...currentDealerCards(), newHands);
   }
 
   function stand() {
     if (phase !== "player-turn" || !activeHand) return;
     recordDecision("stand");
     const newHands = updateActiveHand({ ...activeHand, hasActed: true, done: true });
-    advanceToNextHandOrDealer(newHands);
+    advanceToNextHandOrDealer(...currentDealerCards(), newHands);
   }
 
   function double() {
@@ -468,14 +504,14 @@ export function usePlayMode(initialSystemId: string, initialBankroll: number) {
       hasActed: true,
       done: true,
     });
-    advanceToNextHandOrDealer(newHands);
+    advanceToNextHandOrDealer(...currentDealerCards(), newHands);
   }
 
   function surrender() {
     if (phase !== "player-turn" || !activeHand || !activeHandOptions.canSurrender) return;
     recordDecision("surrender");
     const newHands = updateActiveHand({ ...activeHand, surrendered: true, hasActed: true, done: true });
-    advanceToNextHandOrDealer(newHands);
+    advanceToNextHandOrDealer(...currentDealerCards(), newHands);
   }
 
   function split() {
@@ -524,28 +560,26 @@ export function usePlayMode(initialSystemId: string, initialBankroll: number) {
     setPlayerHands(newHands);
 
     if (isAceSplit) {
-      advanceToNextHandOrDealer(newHands);
+      advanceToNextHandOrDealer(...currentDealerCards(), newHands);
     }
     // else activeHandIndex still correctly points at handA (it replaced
     // the original hand at the same array index) — keep acting on it.
   }
 
-  function advanceToNextHandOrDealer(hands: PlayerHandState[]) {
+  function advanceToNextHandOrDealer(dealerUp: Card, dealerHole: Card, hands: PlayerHandState[]) {
     const nextIndex = hands.findIndex((h, i) => i > activeHandIndex && !h.done);
     if (nextIndex !== -1) {
       setActiveHandIndex(nextIndex);
     } else {
-      beginDealerTurn(hands);
+      beginDealerTurn(dealerUp, dealerHole, hands);
     }
   }
 
   // --- Dealer's turn + resolution ---
 
-  function beginDealerTurn(hands: PlayerHandState[]) {
+  function beginDealerTurn(dealerUpRaw: Card, dealerHoleRaw: Card, hands: PlayerHandState[]) {
     setPhase("dealer-turn");
     const shoe = shoeRef.current;
-    const dealerUpRaw = dealerHand[0].card;
-    const dealerHoleRaw = dealerHand[1].card;
     const initialDealerCards = [dealerUpRaw, dealerHoleRaw];
 
     // No need for the dealer to draw further if every hand already

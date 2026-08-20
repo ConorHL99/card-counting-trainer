@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import { getUserSettings } from "@/lib/db/settings";
 import { getStartingBankroll, DEFAULT_STARTING_BANKROLL } from "@/lib/db/play-persistence";
@@ -12,10 +13,15 @@ export default async function PlayPage() {
     : [null, DEFAULT_STARTING_BANKROLL];
 
   return (
-    <PlayModeView
-      initialSystemId={settings?.defaultSystemId ?? "hi-lo"}
-      initialBankroll={bankroll}
-      signedIn={!!userId}
-    />
+    // PlayModeView reads `?system=` (set by the Dashboard's picker)
+    // via useInitialSystemId, which needs a Suspense boundary — same
+    // requirement as every drill page.
+    <Suspense fallback={null}>
+      <PlayModeView
+        defaultSystemId={settings?.defaultSystemId ?? "hi-lo"}
+        initialBankroll={bankroll}
+        signedIn={!!userId}
+      />
+    </Suspense>
   );
 }

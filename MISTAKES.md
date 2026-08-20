@@ -822,6 +822,43 @@ reads differently there than for a real turn-based round.
 decision to hide the config panel during a round restricts this, so
 exposing seat controls during other phases is a UI-only change.
 
+## [2026-08-20] Play Mode: three real bugs found from user testing + dev server logs
+**What happened:** Checking the dev server logs (as asked) surfaced a
+real hydration error: `<button>` cannot be a descendant of `<button>`
+— the Surrender button wrapped `<Term id="surrender">Surrender</Term>`,
+and `Term` itself renders a `<button>` for its tooltip trigger, so the
+Surrender action button contained a second nested button. Separately,
+user testing surfaced two more: the correctness-notification feedback
+for a hand's LAST action never appeared, because it was rendered only
+inside the `phase === "player-turn"` block — the very last action is
+what moves the phase away from "player-turn" (to "dealer-turn" then
+"resolved", synchronously), so the block unmounted before the user
+could see it. And a natural player blackjack required a manual Stand
+click even though it's an unbeatable, already-decided hand.
+**Fix / rule going forward:** Term's tooltip button can never nest
+inside another interactive button — moved it to a plain explanatory
+line below the action row instead. Correctness feedback now renders
+based on `lastActionFeedback` being non-null (which itself only exists
+after an action and resets at the next deal), not gated to a specific
+phase. A natural blackjack is now auto-detected right after dealing/
+peek-resolution and routed through the same advance/resolve path a
+manual Stand would use.
+**A second, subtler bug caused by the blackjack fix itself:** routing
+the auto-blackjack case through `advanceToNextHandOrDealer` ->
+`beginDealerTurn` meant those functions could now be called
+SYNCHRONOUSLY from within `deal()`/`finishPeek()`, before that same
+render's `setDealerHand` call had flushed — reading `dealerHand` state
+via closure at that point would see stale (sometimes empty) data
+instead of the cards just dealt. Fixed by threading the dealer's cards
+as explicit parameters through `enterPlayerTurn` ->
+`advanceToNextHandOrDealer` -> `beginDealerTurn`, the same discipline
+already used for `finishPeek`'s insurance flow — closure reads of
+`dealerHand` are only safe from genuine user-click handlers (hit/
+stand/double/surrender/split), never from a function that might also
+be called same-tick from deal()/finishPeek(). Any future change that
+makes a currently-async-only path reachable synchronously needs the
+same check.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure
