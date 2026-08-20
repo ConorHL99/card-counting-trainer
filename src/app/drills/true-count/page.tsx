@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { generateTrueCountScenario, type TrueCountScenario } from "@/lib/counting";
 import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
+import { useInitialSystemId } from "@/hooks/useInitialSystemId";
 import { CountingSystemSelect } from "@/components/CountingSystemSelect";
 import { SettingToggle } from "@/components/SettingToggle";
 import { Term } from "@/components/Term";
@@ -10,11 +11,20 @@ import { Term } from "@/components/Term";
 const DECK_OPTIONS = [1, 2, 4, 6, 8];
 
 export default function TrueCountDrillPage() {
-  const [systemId, setSystemId] = useState("hi-lo");
+  return (
+    <Suspense fallback={null}>
+      <TrueCountDrillPageInner />
+    </Suspense>
+  );
+}
+
+function TrueCountDrillPageInner() {
+  const initialSystemId = useInitialSystemId("hi-lo", (system) => system.balanced);
+  const [systemId, setSystemId] = useState(initialSystemId);
   const [deckCount, setDeckCount] = useState(6);
   const [revealAnswer, setRevealAnswer] = useState(false);
   const [scenario, setScenario] = useState<TrueCountScenario>(() =>
-    generateTrueCountScenario("hi-lo", 6),
+    generateTrueCountScenario(initialSystemId, 6),
   );
   const [guess, setGuess] = useState("");
   const [feedback, setFeedback] = useState<null | { correct: boolean; actual: number }>(null);

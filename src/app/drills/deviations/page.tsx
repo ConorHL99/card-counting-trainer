@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   DEVIATION_RULES,
   correctActionFor,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/deviations";
 import type { Action } from "@/lib/shoe";
 import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
+import { useInitialSystemId } from "@/hooks/useInitialSystemId";
 import { CountingSystemSelect } from "@/components/CountingSystemSelect";
 import { SettingToggle } from "@/components/SettingToggle";
 import { PlayingCardView } from "@/components/PlayingCard";
@@ -35,7 +36,16 @@ function generateScenario(): { rule: DeviationRule; trueCount: number } {
 }
 
 export default function DeviationsDrillPage() {
-  const [systemId, setSystemId] = useState("hi-lo");
+  return (
+    <Suspense fallback={null}>
+      <DeviationsDrillPageInner />
+    </Suspense>
+  );
+}
+
+function DeviationsDrillPageInner() {
+  const initialSystemId = useInitialSystemId("hi-lo", (system) => system.supportsDeviations);
+  const [systemId, setSystemId] = useState(initialSystemId);
   const [revealAnswer, setRevealAnswer] = useState(false);
   const [scenario, setScenario] = useState(() => generateScenario());
   const [selected, setSelected] = useState<Choice | null>(null);

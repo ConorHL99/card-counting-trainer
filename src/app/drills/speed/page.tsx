@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useCardStreamDrill } from "@/hooks/useCardStreamDrill";
 import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
+import { useInitialSystemId } from "@/hooks/useInitialSystemId";
 import { DrillConfigPanel } from "@/components/DrillConfigPanel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DealingTable } from "@/components/DealingTable";
@@ -29,7 +30,16 @@ function withStop<T extends unknown[]>(stop: () => void, fn: (...args: T) => voi
 }
 
 export default function SpeedDrillPage() {
-  const drill = useCardStreamDrill("hi-lo");
+  return (
+    <Suspense fallback={null}>
+      <SpeedDrillPageInner />
+    </Suspense>
+  );
+}
+
+function SpeedDrillPageInner() {
+  const initialSystemId = useInitialSystemId();
+  const drill = useCardStreamDrill(initialSystemId);
   const [revealCount, setRevealCount] = useState(false);
   const [running, setRunning] = useState(false);
   const [speedMs, setSpeedMs] = useState(DEFAULT_SPEED_MS);

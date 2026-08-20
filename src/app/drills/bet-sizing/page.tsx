@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { generateTrueCountScenario, type TrueCountScenario } from "@/lib/counting";
 import { BET_RAMP, getBetUnits } from "@/lib/betting";
 import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
+import { useInitialSystemId } from "@/hooks/useInitialSystemId";
 import { CountingSystemSelect } from "@/components/CountingSystemSelect";
 import { SettingToggle } from "@/components/SettingToggle";
 import { Term } from "@/components/Term";
@@ -12,11 +13,20 @@ const DECK_OPTIONS = [1, 2, 4, 6, 8];
 const BET_OPTIONS = Array.from(new Set(BET_RAMP.map((step) => step.units)));
 
 export default function BetSizingDrillPage() {
-  const [systemId, setSystemId] = useState("hi-lo");
+  return (
+    <Suspense fallback={null}>
+      <BetSizingDrillPageInner />
+    </Suspense>
+  );
+}
+
+function BetSizingDrillPageInner() {
+  const initialSystemId = useInitialSystemId("hi-lo", (system) => system.balanced);
+  const [systemId, setSystemId] = useState(initialSystemId);
   const [deckCount, setDeckCount] = useState(6);
   const [revealAnswer, setRevealAnswer] = useState(false);
   const [scenario, setScenario] = useState<TrueCountScenario>(() =>
-    generateTrueCountScenario("hi-lo", 6),
+    generateTrueCountScenario(initialSystemId, 6),
   );
   const [selectedUnits, setSelectedUnits] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<null | { correct: boolean; actual: number }>(null);

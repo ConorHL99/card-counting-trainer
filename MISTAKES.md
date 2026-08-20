@@ -612,6 +612,79 @@ the `isDeviationCall` opt-in — removing it just means every drill's
 `deviationAccuracyPercent` goes back to always-null, no schema change
 needed.
 
+## [2026-08-20] Design call: Dashboard/Resume pre-fill a drill's system via `?system=`, not a shared store
+**What happened:** Building the Dashboard (SPEC.md §5.1)'s "pick a
+system" + "resume last session" required a way to hand a chosen system
+id to whichever drill page the user lands on next. Rather than adding
+global client state (context/store) shared between the Dashboard and
+every drill page, used a plain `?system=<id>` query param the
+Dashboard/Resume links append, read via a new `useInitialSystemId`
+hook (`src/hooks/useInitialSystemId.ts`) as each drill's starting
+system. Since the hook calls `useSearchParams`, every drill page now
+wraps its actual content in `<Suspense>` with an inner
+`*PageInner` component (Next.js's required pattern for that hook).
+**Reasoning:** A query param is simpler than cross-page state, requires
+no provider/context wiring, survives a page refresh, and is trivially
+shareable/bookmarkable. The Suspense wrapping is mechanical and
+low-risk — verified with `next build` (no warnings) and a live dev-
+server smoke test hitting every drill route.
+**If this call is wrong:** swapping to shared client state would only
+touch `useInitialSystemId` and the two link-building spots
+(`DashboardPicker.tsx`, `src/app/page.tsx`'s Resume card) — the drill
+pages' own `useInitialSystemId(...)` call sites wouldn't need to change
+shape, just what they read from.
+
+## [2026-08-20] Design call: `useInitialSystemId` respects each drill's own system filter
+**What happened:** True Count and Bet-Sizing drills only accept
+balanced systems (`system.balanced`); Deviations only accepts
+`system.supportsDeviations` ones — but the Dashboard's picker offers
+every system, so a link like "pick KO, then click True Count" was
+possible and would have silently generated a nonsensical "true count"
+for an unbalanced system (KO doesn't need conversion at all).
+**Why it's a problem (assumption, caught before shipping, not after):**
+Would have violated the exact constraint those drills' own
+`CountingSystemSelect filter` props already enforce for manual
+selection — an incoming id shouldn't be able to bypass a rule the UI
+otherwise upholds.
+**Fix / rule going forward:** `useInitialSystemId` takes an optional
+`filter` (same predicate shape as `CountingSystemSelect`'s), and falls
+back to the first system that satisfies it when the requested id
+doesn't qualify. True Count/Bet-Sizing pass `(s) => s.balanced`;
+Deviations passes `(s) => s.supportsDeviations`. Verified against the
+running dev server: `/drills/true-count?system=ko` and
+`/drills/deviations?system=ko` both return 200 (silently substitute
+Hi-Lo) rather than generating a KO true-count scenario.
+
+## [2026-08-20] Design call: Settings, Stats/History, and Play Mode metrics scope
+**What happened:** Three related scope decisions made building
+Settings (§5.6) and Stats/History (§5.5):
+1. A `user_settings` row is only created when the user actually clicks
+   Save on the Settings page (via `updateUserSettings`), not on first
+   sign-in — `getUserSettings` falls back to the schema's documented
+   defaults (`hi-lo`, both reveal toggles off) when no row exists yet,
+   consistent with `users` being the only row auto-created on login
+   per CLAUDE.md's data model conventions.
+2. Settings' "default toggle states" are saved and displayed, but not
+   yet wired to actually initialize each drill page's reveal-count/
+   reveal-correct-action toggles (those still always start `false`,
+   as before). Built the storage/UI half; wiring drills to read it is
+   a follow-up, not attempted here to avoid re-touching all five drill
+   pages in an already-large task.
+3. Stats/History shows every §6 metric that has a real data source
+   (accuracy, speed, deviation accuracy, streak, session history) but
+   explicitly labels betting correlation and bankroll trend as
+   Play-Mode-sourced and not shown, rather than rendering fabricated
+   zero/placeholder values — `play_sessions` stays empty until Play
+   Mode (§5.4) exists.
+**If any of these calls are wrong:** (1) is a one-line change (insert
+a default row in the `jwt` callback in `src/auth.ts` alongside the
+`users` insert); (2) means passing `settings.defaultRevealCount` etc.
+as each drill page's `useState` initial value instead of `false`,
+fetched the same way `useInitialSystemId` reads `?system=` today; (3)
+resolves itself automatically once Play Mode writes real
+`play_sessions` rows — the Stats page's per-system table would just
+need two more columns.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

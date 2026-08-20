@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useCardStreamDrill } from "@/hooks/useCardStreamDrill";
 import { useDrillTelemetry } from "@/hooks/useDrillTelemetry";
+import { useInitialSystemId } from "@/hooks/useInitialSystemId";
 import { DrillConfigPanel } from "@/components/DrillConfigPanel";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DealingTable } from "@/components/DealingTable";
@@ -10,7 +11,16 @@ import { PlayingCardView } from "@/components/PlayingCard";
 import { Term } from "@/components/Term";
 
 export default function RunningCountDrillPage() {
-  const drill = useCardStreamDrill("hi-lo");
+  return (
+    <Suspense fallback={null}>
+      <RunningCountDrillPageInner />
+    </Suspense>
+  );
+}
+
+function RunningCountDrillPageInner() {
+  const initialSystemId = useInitialSystemId();
+  const drill = useCardStreamDrill(initialSystemId);
   const [revealCount, setRevealCount] = useState(false);
   const telemetry = useDrillTelemetry({
     drillType: "running-count",

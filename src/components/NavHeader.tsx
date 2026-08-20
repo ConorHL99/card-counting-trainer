@@ -2,8 +2,10 @@ import Link from "next/link";
 import { auth, signIn, signOut } from "@/auth";
 
 const LINKS = [
-  { href: "/", label: "Home" },
+  { href: "/", label: "Dashboard" },
   { href: "/drills", label: "Practice Drills" },
+  { href: "/stats", label: "Stats" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export async function NavHeader() {
