@@ -22,7 +22,7 @@ this file** (already gitignored). Names only, no values, here:
 | `AUTH_SECRET` | `app` | generate with `openssl rand -base64 32` |
 | `AUTH_URL` | `app` | the real public URL nginx-proxy-manager serves this on |
 | `AUTH_TRUST_HOST` | `app` | `true` — required behind a reverse proxy |
-| `APP_PORT` | compose only | host port (127.0.0.1) to point nginx-proxy-manager at; defaults to 3000 if omitted |
+| `APP_PORT` | compose only | LAN-reachable host port to point nginx-proxy-manager at (it runs on a separate machine, the Pi); defaults to 3000 if omitted |
 
 In PocketID, register the client's redirect URI as
 `https://<your-real-domain>/api/auth/callback/pocketid`.
@@ -47,8 +47,10 @@ git pull
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Point nginx-proxy-manager's proxy host at `127.0.0.1:<APP_PORT>` (or
-whatever `APP_PORT` is set to — 3000 by default).
+Point nginx-proxy-manager's proxy host at `<nas-lan-ip>:<APP_PORT>` —
+the NAS's own LAN address (nginx-proxy-manager runs on a separate
+machine, so `localhost`/`127.0.0.1` won't reach it) and whatever
+`APP_PORT` is set to, 3000 by default.
 
 ## 3. Checking logs
 
@@ -118,6 +120,9 @@ uses.
 
 `db` publishes no port at all — only the `app` container can reach it,
 over the internal Compose network, addressed as `db`. `app` publishes
-its port bound to `127.0.0.1` only, never directly to the LAN/internet
-— nginx-proxy-manager is the only thing that should reverse-proxy to
-it.
+its port on the LAN (nginx-proxy-manager runs on a separate machine,
+the Pi, so it needs to reach this over the network, not just
+loopback) — but nothing here forwards that port to the internet. That
+stays a router/firewall decision, same as this network's other
+self-hosted services; nginx-proxy-manager is the only thing that
+should reverse-proxy to it.
