@@ -1002,6 +1002,98 @@ two dominant, entirely avoidable sources of shift.
 to fit BettingRack's actual content — worth adjusting directly if any
 phase's content still doesn't fit without its own internal scrolling.
 
+## [2026-08-21] Production Docker build needs DATABASE_URL at BUILD time, not just runtime
+**What happened:** Assumed (without testing) that since every route in
+this app is fully dynamic, `next build` would never execute
+`src/lib/db/index.ts`'s module-level `throw new Error("DATABASE_URL
+is not set")` — dynamic routes aren't pre-rendered, so nothing should
+*run* their server code at build time. Verified this assumption with
+an isolated build (a scratch copy of `src`/`public`/config files, a
+symlinked `node_modules`, zero `.env*` files present) before trusting
+it, and the assumption was WRONG: Next's "Collecting page data" step
+imports the root layout — and everything it transitively imports
+(`NavHeader.tsx` → `src/auth.ts` → `src/lib/db/index.ts`) — for every
+route to statically analyze it, even fully dynamic ones. That import
+alone (module evaluation, not calling any function) is enough to hit
+the throw.
+**Fix:** The Dockerfile's build stage sets a placeholder `DATABASE_URL`
+(`postgres://build:build@localhost:5432/build_placeholder`) as a plain
+`ENV` before `RUN npm run build`. It's never used to actually reach a
+database (no query runs during the build) and has zero effect on the
+real container's runtime `DATABASE_URL`, which comes from
+docker-compose's `.env` file at container start — confirmed by
+re-running the same isolated build with only that placeholder set (no
+other env vars) and getting a clean, complete build.
+**Fix / rule going forward:** Never assume a "dynamic routes don't run
+at build time" mental model extends to "no module anywhere gets
+imported at build time" — imports execute top-level code regardless of
+whether the importing route ever gets pre-rendered. Verify build-time
+behavior empirically (an isolated, zero-env-var build) rather than
+reasoning about it from how Next.js's rendering model *should* work.
+
+## [2026-08-21] Next bundles drizzle-orm/postgres into its own server chunks — but a standalone script doesn't get that
+**What happened:** After getting the build working, checked whether
+`.next/standalone/node_modules` (the pruned output the production
+image copies) actually contained everything needed — it was missing
+`drizzle-orm`, `postgres`, and `next-auth` entirely, only `next`/
+`react`/`react-dom`/`sharp` were present. Verified two things directly
+rather than guessing: (1) started the actual standalone `server.js`
+from ONLY that pruned `node_modules` against the real local Postgres —
+it worked fine, including a route that touches `src/auth.ts`/
+`src/lib/db` (`/api/auth/providers`) — confirming Next's bundler
+inlines these pure-JS packages directly into its own compiled server
+chunks, so the running app doesn't need them present as separate
+packages; (2) then ran `scripts/migrate.mjs` (a plain Node script,
+never processed by Next's bundler) against that same pruned
+`node_modules` — it failed with `ERR_MODULE_NOT_FOUND: drizzle-orm`,
+confirming the migration script specifically needed a real fix, not
+just the app.
+**Fix:** The Dockerfile's runner stage now explicitly copies
+`drizzle-orm` and `postgres` from the `deps` stage's full
+`node_modules` into the final image's `node_modules`, alongside the
+standalone-pruned set. Checked both packages' own `package.json`
+first — neither has any dependencies of its own, so this two-directory
+copy is complete on its own, no wider transitive-dependency merge
+needed. Re-verified `scripts/migrate.mjs` against the corrected
+`node_modules` layout and it ran cleanly.
+**Fix / rule going forward:** A file that Next.js's own bundler never
+touches (any standalone script run via a custom `ENTRYPOINT`, not
+through `next start`) cannot rely on `output: "standalone"`'s pruned
+`node_modules` containing anything — that pruning is scoped to what
+the *Next.js server itself* needs, not what every script in the image
+needs. Verify such a script's dependencies are actually present by
+running it against the exact pruned `node_modules` the image will
+ship, not by assuming "it's a production dependency in package.json,
+so it must be there."
+
+## [2026-08-21] This sandbox has no outbound internet access — couldn't run `docker build` directly
+**What happened:** `docker build` failed immediately trying to resolve
+`docker/dockerfile:1` and `registry-1.docker.io` — this execution
+environment has no route to the public internet at all (confirmed:
+`docker images` shows no `node` image ever cached here, and an
+earlier, unrelated `next build` in this same environment failed
+fetching Google Fonts for the same underlying reason). This is a
+constraint of this environment, not evidence of a real problem in the
+Dockerfile.
+**What was verified instead, given that constraint:** every stage's
+actual LOGIC was tested directly against the real local Postgres and
+the real build output — the build-time `DATABASE_URL` requirement (via
+an isolated zero-env build), the standalone server starting and
+serving a DB-touching route from the pruned `node_modules`, the
+migration script failing then succeeding against the corrected
+`node_modules`, and the migration script itself against both an
+already-migrated database (idempotent, no-op) and a brand-new empty
+one (creates all 5 tables correctly) — see the two entries above and
+the "Play Mode chunk" persistence entries earlier in this file for the
+established pattern of preferring a real, targeted test over
+assumption. What was NOT verified: the actual multi-stage `docker
+build` running top-to-bottom in one process, and the assembled
+`docker compose -f docker-compose.prod.yml up` stack. The user's real
+TrueNAS Docker daemon has normal internet access (it already needs it
+to pull base images), so this is very likely a non-issue there — but
+it's the one part of this deployment genuinely unverified by this
+session, flagged here rather than silently assumed fine.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

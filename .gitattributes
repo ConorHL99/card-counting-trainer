@@ -1,0 +1,6 @@
+# Shell scripts run inside a Linux container (docker-entrypoint.sh) —
+# they must always have LF line endings regardless of this repo's own
+# core.autocrlf setting (true on this Windows checkout), or `/bin/sh`
+# fails to parse the shebang/script inside Alpine. See DEPLOYMENT.md.
+*.sh text eol=lf
+Dockerfile text eol=lf

@@ -1,0 +1,50 @@
+# Production stack — deploy on the NAS with:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Separate from docker-compose.yml (local dev's Postgres-only stack,
+# used with `npm run dev`) — that file is untouched by this one. See
+# DEPLOYMENT.md for the full runbook.
+#
+# Reads its variables from a `.env` file in this same directory
+# (create it on the NAS from .env.production.example — never commit
+# the real one). `env_file:` below injects every value straight into
+# the app container's environment; the ${...} references in the `db`
+# service are substituted by Compose itself when it parses this file.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # No published port — dedicated to this app specifically, reached
+    # only by the `app` service below over the compose network (as
+    # host "db"), never exposed on the NAS's own network.
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Bound to loopback only — nginx-proxy-manager reverse-proxies
+      # to 127.0.0.1:${APP_PORT} from the same host; this is not what
+      # faces the internet. Change to "0.0.0.0:${APP_PORT}:3000" only
+      # if your proxy runs on a different host and needs LAN access.
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+
+volumes:
+  db-data:

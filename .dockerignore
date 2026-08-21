@@ -1,0 +1,28 @@
+# Keeps the build context small and guarantees nothing local (real
+# secrets, local caches, editor state) can ever end up baked into the
+# image — the build stage installs its own node_modules and never
+# reads local .env files (see Dockerfile).
+node_modules
+.next
+.git
+.gitignore
+
+# env files — real production values only ever reach the container at
+# runtime via docker-compose's env_file, never copied into the image.
+.env
+.env*
+!.env.example
+
+npm-debug.log*
+*.tsbuildinfo
+
+.vscode
+.idea
+.DS_Store
+
+README.md
+MISTAKES.md
+SPEC.md
+CLAUDE.md
+AGENTS.md
+DEPLOYMENT.md
