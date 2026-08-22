@@ -18,6 +18,7 @@ import { dealerMayHaveBlackjack, playDealerHand, resolveHand, pearsonCorrelation
 import { getCountingAwareAction } from "@/lib/deviations";
 import { wrapCard, type DealtCard, type TableHand } from "@/lib/table/types";
 import type { DrillSeat } from "@/hooks/useCardStreamDrill";
+import { randomId } from "@/lib/random-id";
 import { savePlayProgress } from "@/lib/db/play-actions";
 
 const MAX_SEATS = 6;
@@ -273,7 +274,7 @@ export function usePlayMode(initialSystemId: string, initialBankroll: number) {
   // place no restriction of their own.
   function addSeat() {
     setSeats((prev) =>
-      prev.length >= MAX_SEATS ? prev : [...prev, { id: crypto.randomUUID(), skill: "basic-strategy" as SeatSkill }],
+      prev.length >= MAX_SEATS ? prev : [...prev, { id: randomId(), skill: "basic-strategy" as SeatSkill }],
     );
   }
   function removeSeat(id: string) {
@@ -641,7 +642,7 @@ export function usePlayMode(initialSystemId: string, initialBankroll: number) {
 
   function persistAfterRound(finalBankroll: number) {
     if (!sessionIdRef.current) {
-      sessionIdRef.current = crypto.randomUUID();
+      sessionIdRef.current = randomId();
       startedAtRef.current = new Date().toISOString();
     }
     handsPlayedRef.current += 1;

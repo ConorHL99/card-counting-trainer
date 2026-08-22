@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { saveDrillProgress } from "@/lib/db/drill-actions";
 import type { DrillProgressInput } from "@/lib/db/drill-persistence";
+import { randomId } from "@/lib/random-id";
 
 interface DrillTelemetryConfig {
   drillType: DrillProgressInput["drillType"];
@@ -65,7 +66,7 @@ export function useDrillTelemetry(config: DrillTelemetryConfig) {
   const recordCheck = useCallback(
     (correct: boolean, opts?: { isDeviationCall?: boolean }) => {
       if (!sessionIdRef.current) {
-        sessionIdRef.current = crypto.randomUUID();
+        sessionIdRef.current = randomId();
         startedAtRef.current = new Date().toISOString();
       }
       totalRef.current += 1;

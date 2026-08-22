@@ -5,6 +5,7 @@ import { getCountingSystem } from "@/lib/counting-systems";
 import { computeRunningCount, computeDecksRemaining } from "@/lib/counting";
 import { Shoe, playSimulatedSeatHand, type Card, type SeatSkill, type DealMode } from "@/lib/shoe";
 import { wrapCard, type DealtCard, type TableHand } from "@/lib/table/types";
+import { randomId } from "@/lib/random-id";
 
 export interface DrillSeat {
   id: string;
@@ -123,7 +124,7 @@ export function useCardStreamDrill(initialSystemId: string = "hi-lo") {
     setSeats((prev) =>
       prev.length >= MAX_SEATS
         ? prev
-        : [...prev, { id: crypto.randomUUID(), skill: "basic-strategy" }],
+        : [...prev, { id: randomId(), skill: "basic-strategy" }],
     );
   }
   function removeSeat(id: string) {

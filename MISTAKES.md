@@ -1094,6 +1094,51 @@ to pull base images), so this is very likely a non-issue there — but
 it's the one part of this deployment genuinely unverified by this
 session, flagged here rather than silently assumed fine.
 
+## [2026-08-22] Every Deal/Start button broke in production: crypto.randomUUID() needs a secure context
+**What happened:** User reported Deal/Start/Play buttons across every
+drill and Play Mode stopped working after the first real deployment —
+clicking Deal cleared the bet but no cards ever appeared. Browser
+console showed `Uncaught TypeError: crypto.randomUUID is not a
+function`. Root cause: `crypto.randomUUID()` (the Web Crypto API) is
+only available in a secure context — HTTPS, or `localhost` — and is
+simply `undefined` in a browser tab open over plain HTTP (a fresh
+deployment reached via the NAS's LAN IP or before nginx-proxy-manager
+has SSL configured is exactly this case). Five call sites relied on it
+directly: `wrapCard()` (every dealt card, used by all shoe-mode drills
+and Play Mode), seat-id generation in both `useCardStreamDrill.ts` and
+`usePlayMode.ts`, and telemetry session ids in both `useDrillTelemetry.
+ts` and `usePlayMode.ts`. `wrapCard()` is what broke Deal specifically
+— it's the first thing `deal()`/`dealNext()` call to build the dealt
+cards, so the function threw immediately after `setCurrentBet(0)` had
+already cleared the bet from the UI but before any card/phase state
+was set — exactly the "bet disappears, no cards come out" symptom.
+**Why this wasn't caught earlier:** Every verification this whole
+project has done — `next build`, `next dev`, curl smoke tests, even
+the standalone-server test during the Docker work — either runs over
+plain HTTP against `localhost` (a secure context by explicit spec
+carve-out, so `crypto.randomUUID` works fine there) or doesn't exercise
+click handlers at all (curl can't click a button). Only a real browser
+against a real non-localhost, non-HTTPS origin exposes this gap, which
+none of this project's own testing (no browser tool available all
+session) could reach. This is exactly the kind of bug SPEC/CLAUDE.md's
+"always verify in a real browser for UI changes" guidance exists to
+catch, and it took the user's own hands to surface it.
+**Fix:** Added `src/lib/random-id.ts` — a single `randomId()` helper
+that calls `crypto.randomUUID()` when available and falls back to a
+`Math.random()`-based id otherwise. None of the five call sites needed
+real cryptographic randomness (React keys, seat ids, telemetry
+correlation ids, never anything security-sensitive), so the fallback
+is fine. All five call sites now import this instead of calling
+`crypto.randomUUID()` directly.
+**Fix / rule going forward:** Never call `crypto.randomUUID()` (or any
+other secure-context-gated Web API) directly from application code —
+route it through a helper with a graceful fallback, the same way this
+project already centralizes counting-system lookups, the shoe engine,
+etc. If a future feature needs a secure-context API with no reasonable
+fallback (e.g. actual `crypto.getRandomValues` for something security-
+sensitive), that's a sign the whole feature needs HTTPS as a hard
+prerequisite, not a place to reach for the same workaround.
+
 ## Known risks to watch for from day one
 
 These haven't necessarily happened yet, but are predictable failure

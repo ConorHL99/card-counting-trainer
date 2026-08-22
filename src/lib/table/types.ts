@@ -1,4 +1,5 @@
 import type { Card } from "@/lib/shoe";
+import { randomId } from "@/lib/random-id";
 
 /** A dealt card with a stable per-instance id, separate from
  * rank/suit — needed so DealingTable (SPEC.md §7.2) can key each card
@@ -30,5 +31,5 @@ export interface TableHand {
 }
 
 export function wrapCard(card: Card, faceDown = false): DealtCard {
-  return { id: crypto.randomUUID(), card, faceDown };
+  return { id: randomId(), card, faceDown };
 }
